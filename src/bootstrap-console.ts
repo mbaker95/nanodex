@@ -30,7 +30,6 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     'If a bundled channel already exists in src/channels, assume installation is not the task. Focus on credentials, authentication, registration, restart, and live verification.',
     'Do not spend time reading large parts of the codebase unless a concrete setup step fails and you need the source to fix it.',
     'If the user explicitly chooses Telegram, Slack, or Discord, stop steering back to WhatsApp and finish the chosen channel cleanly.',
-    "Do not blur the public repo with the user's private setup state. Prefer local env, local registration, and local auth changes before proposing tracked code changes.",
     "NanoDex is meant to stay small, understandable, and easy to reshape in the user's fork.",
     "Keep NanoDex as faithful as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native workflows.",
     'Use the repo skills and the local workspace to finish setup directly in the codebase.',

@@ -5,7 +5,9 @@
 <h1 align="center">NanoDex</h1>
 
 <p align="center">
-  A self-hosted Codex assistant with isolated Docker runtimes, per-group memory, and a codebase small enough to reshape safely in your own fork.
+A self-hosted Codex assistant with isolated Docker runtimes, per-group memory, and a codebase small enough to reshape safely in your own fork. 
+  
+Created with 100% Vibes use at your own risk.
 </p>
 
 ## Overview

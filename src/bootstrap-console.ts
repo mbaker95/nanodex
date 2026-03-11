@@ -23,6 +23,8 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     'NanoDex is running in bootstrap mode because setup is incomplete.',
     '',
     'You are operating directly on the NanoDex host repository from an interactive Codex CLI session.',
+    'For setup and installation work, do that work outside the Codex sandbox on the host system and host repository.',
+    'This is about Codex sandbox boundaries, not Docker: use host-side commands, host Windows environment variables, and direct repo edits when dependencies, auth, or channel setup need to change.',
     "NanoDex is meant to stay small, understandable, and easy to reshape in the user's fork.",
     "Keep NanoDex as faithful as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native workflows.",
     'Use the repo skills and the local workspace to finish setup directly in the codebase.',

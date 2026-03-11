@@ -1,7 +1,7 @@
 /**
- * Credential proxy for container isolation.
- * Containers connect here instead of directly to the Anthropic API.
- * The proxy injects real credentials so containers never see them.
+ * Legacy credential proxy from the old NanoClaw auth model.
+ * NanoDex no longer routes runtime auth through this module, but the file
+ * remains for compatibility and tests while older forks are still migrating.
  *
  * Two auth modes:
  *   API key:  Proxy injects x-api-key on every request.

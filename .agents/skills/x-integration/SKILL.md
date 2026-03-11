@@ -1,11 +1,13 @@
 ---
 name: x-integration
-description: X (Twitter) integration for NanoDex. Post tweets, like, reply, retweet, and quote. Use for setup, testing, or troubleshooting X functionality. Triggers on "setup x", "x integration", "twitter", "post tweet", "tweet".
+description: Draft X (Twitter) integration for NanoDex. Uses browser automation for posting, liking, replying, retweeting, and quoting, but still needs a full Codex-native runtime port before it should be treated as production-ready.
 ---
 
 # X (Twitter) Integration
 
 Browser automation for X interactions via WhatsApp.
+
+> **Status:** This skill is still a draft carried over from an older integration model. Treat it as a reference for future porting work, not as a polished built-in NanoDex path.
 
 > **Compatibility:** NanoDex v1.0.0. Directory structure may change in future versions.
 
@@ -40,12 +42,12 @@ Before using this skill, ensure:
 
 ```bash
 # 1. Setup authentication (interactive)
-npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/setup.ts
+npx dotenv -e .env -- npx tsx .agents/skills/x-integration/scripts/setup.ts
 # Verify: data/x-auth.json should exist after successful login
 
 # 2. Rebuild container to include skill
 ./container/build.sh
-# Verify: Output shows "COPY .claude/skills/x-integration/agent.ts"
+# Verify: Output shows "COPY .agents/skills/x-integration/agent.ts"
 
 # 3. Rebuild host and restart service
 npm run build
@@ -136,7 +138,7 @@ Paths relative to project root:
 ### File Structure
 
 ```
-.claude/skills/x-integration/
+.agents/skills/x-integration/
 ├── SKILL.md          # This documentation
 ├── host.ts           # Host-side IPC handler
 ├── agent.ts          # Container-side MCP tool definitions
@@ -162,7 +164,7 @@ To integrate this skill into NanoDex, make the following modifications:
 
 Add import after other local imports:
 ```typescript
-import { handleXIpc } from '../.claude/skills/x-integration/host.js';
+import { handleXIpc } from '../.agents/skills/x-integration/host.js';
 ```
 
 Modify `processTaskIpc` function's switch statement default case:
@@ -185,7 +187,7 @@ if (!handled) {
 
 Add import after `cron-parser` import:
 ```typescript
-// @ts-ignore - Copied during Docker build from .claude/skills/x-integration/
+// @ts-ignore - Copied during Docker build from .agents/skills/x-integration/
 import { createXTools } from './skills/x-integration/agent.js';
 ```
 
@@ -198,7 +200,7 @@ Add to the end of tools array (before the closing `]`):
 
 **3. Build script: `container/build.sh`**
 
-Change build context from `container/` to project root (required to access `.claude/skills/`):
+Change build context from `container/` to project root (required to access `.agents/skills/`):
 ```bash
 # Find:
 docker build -t "${IMAGE_NAME}:${TAG}" .
@@ -212,7 +214,7 @@ docker build -t "${IMAGE_NAME}:${TAG}" -f container/Dockerfile .
 
 **4. Dockerfile: `container/Dockerfile`**
 
-First, update the build context paths (required to access `.claude/skills/` from project root):
+First, update the build context paths (required to access `.agents/skills/` from project root):
 ```dockerfile
 # Find:
 COPY agent-runner/package*.json ./
@@ -228,7 +230,7 @@ COPY container/agent-runner/ ./
 Then add COPY line after `COPY container/agent-runner/ ./` and before `RUN npm run build`:
 ```dockerfile
 # Copy skill MCP tools
-COPY .claude/skills/x-integration/agent.ts ./src/skills/x-integration/
+COPY .agents/skills/x-integration/agent.ts ./src/skills/x-integration/
 ```
 
 ## Setup
@@ -247,7 +249,7 @@ echo "Chrome not found - update CHROME_PATH in .env"
 ### 2. Run Authentication
 
 ```bash
-npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/setup.ts
+npx dotenv -e .env -- npx tsx .agents/skills/x-integration/scripts/setup.ts
 ```
 
 This opens Chrome for manual X login. Session saved to `data/x-browser-profile/`.
@@ -317,26 +319,26 @@ ls -la data/x-browser-profile/ 2>/dev/null | head -5
 ### Re-authenticate (if expired)
 
 ```bash
-npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/setup.ts
+npx dotenv -e .env -- npx tsx .agents/skills/x-integration/scripts/setup.ts
 ```
 
 ### Test Post (will actually post)
 
 ```bash
-echo '{"content":"Test tweet - please ignore"}' | npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/post.ts
+echo '{"content":"Test tweet - please ignore"}' | npx dotenv -e .env -- npx tsx .agents/skills/x-integration/scripts/post.ts
 ```
 
 ### Test Like
 
 ```bash
-echo '{"tweetUrl":"https://x.com/user/status/123"}' | npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/like.ts
+echo '{"tweetUrl":"https://x.com/user/status/123"}' | npx dotenv -e .env -- npx tsx .agents/skills/x-integration/scripts/like.ts
 ```
 
 Or export `CHROME_PATH` manually before running:
 
 ```bash
 export CHROME_PATH="/path/to/chrome"
-echo '{"content":"Test"}' | npx tsx .claude/skills/x-integration/scripts/post.ts
+echo '{"content":"Test"}' | npx tsx .agents/skills/x-integration/scripts/post.ts
 ```
 
 ## Troubleshooting
@@ -344,7 +346,7 @@ echo '{"content":"Test"}' | npx tsx .claude/skills/x-integration/scripts/post.ts
 ### Authentication Expired
 
 ```bash
-npx dotenv -e .env -- npx tsx .claude/skills/x-integration/scripts/setup.ts
+npx dotenv -e .env -- npx tsx .agents/skills/x-integration/scripts/setup.ts
 launchctl kickstart -k gui/$(id -u)/com.nanodex  # macOS
 # Linux: systemctl --user restart nanodex
 ```

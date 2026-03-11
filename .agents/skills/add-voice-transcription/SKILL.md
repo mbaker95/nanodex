@@ -15,15 +15,13 @@ Check if `src/transcription.ts` exists. If it does, skip to Phase 3 (Configure).
 
 ### Ask the user
 
-Use `AskUserQuestion` to collect information:
-
-AskUserQuestion: Do you have an OpenAI API key for Whisper transcription?
+Ask the user directly: do they have an OpenAI API key for Whisper transcription?
 
 If yes, collect it now. If no, direct them to create one at https://platform.openai.com/api-keys.
 
 ## Phase 2: Apply Code Changes
 
-**Prerequisite:** WhatsApp must be installed first (`skill/whatsapp` merged). This skill modifies WhatsApp channel files.
+**Prerequisite:** The bundled WhatsApp channel must already be configured. This skill modifies WhatsApp channel files.
 
 ### Ensure WhatsApp fork remote
 

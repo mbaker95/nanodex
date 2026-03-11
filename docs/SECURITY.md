@@ -56,11 +56,12 @@ The in-container MCP bridge validates operations against the group identity that
 
 ### 5. Credential Exposure
 
-NanoDex no longer uses the old Anthropic credential proxy. Containers receive the API key directly through environment variables so the Codex CLI and SDK can authenticate normally.
+NanoDex prefers login-based Codex auth and syncs resolved login state into the per-group Codex home when possible. API-key auth remains a fallback.
 
 Current implications:
 
-- `CODEX_API_KEY` or `OPENAI_API_KEY` is present in the container environment
+- When login auth is available, NanoDex writes the resolved auth payload into the group's mounted `.codex/auth.json`
+- When login auth is unavailable, `CODEX_API_KEY` or `OPENAI_API_KEY` is present in the container environment
 - `.env` is still shadowed from the read-only project mount when possible
 - Real credentials are not written into AGENTS files, IPC files, or group folders by the runtime
 

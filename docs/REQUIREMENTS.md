@@ -1,14 +1,14 @@
-# NanoClaw Requirements
+# NanoDex Requirements
 
-Original requirements and design decisions from the project creator.
+Current product requirements and philosophy for the Codex-native fork.
 
 ---
 
 ## Why This Exists
 
-This is a lightweight, secure alternative to OpenClaw (formerly ClawBot). That project became a monstrosity - 4-5 different processes running different gateways, endless configuration files, endless integrations. It's a security nightmare where agents don't run in isolated processes; there's all kinds of leaky workarounds trying to prevent them from accessing parts of the system they shouldn't. It's impossible for anyone to realistically understand the whole codebase. When you run it you're kind of just yoloing it.
+NanoDex exists to keep a personal AI assistant understandable, isolated, and easy to reshape.
 
-NanoClaw gives you the core functionality without that mess.
+The project should not turn into a control plane, plugin framework, or maze of configuration. It should stay close to one person's real use case while leaving the code small enough that Codex can safely inspect it, modify it, and explain it end to end.
 
 ---
 
@@ -16,181 +16,120 @@ NanoClaw gives you the core functionality without that mess.
 
 ### Small Enough to Understand
 
-The entire codebase should be something you can read and understand. One Node.js process. A handful of source files. No microservices, no message queues, no abstraction layers.
+The core should remain compact enough that one person can understand the host runtime, container runtime, storage, and channel flow without needing a platform team.
 
-### Security Through True Isolation
+### Security Through Real Isolation
 
-Instead of application-level permission systems trying to prevent agents from accessing things, agents run in actual Linux containers. The isolation is at the OS level. Agents can only see what's explicitly mounted. Bash access is safe because commands run inside the container, not on your Mac.
+Agents run inside containers with explicit mounts. Security should come from real boundaries and narrow mounts, not from app-layer permission theater.
 
-### Built for One User
+### Built for a Personal Fork
 
-This isn't a framework or a platform. It's working software for my specific needs. I use WhatsApp and Email, so it supports WhatsApp and Email. I don't use Telegram, so it doesn't support Telegram. I add the integrations I actually want, not every possible integration.
+NanoDex is not trying to be a generic automation platform. The intended use is: fork it, shape it, and let Codex help keep that fork coherent over time.
 
-### Customization = Code Changes
+### Code Over Configuration
 
-No configuration sprawl. If you want different behavior, modify the code. The codebase is small enough that this is safe and practical. Very minimal things like the trigger word are in config. Everything else - just change the code to do what you want.
+Simple, low-risk knobs can live in `.env`, but behavioral changes should usually be expressed as code or instructions, not layered configuration systems.
 
-### AI-Native Development
+### Agent-First Operation
 
-I don't need an installation wizard - Claude Code guides the setup. I don't need a monitoring dashboard - I ask Claude Code what's happening. I don't need elaborate logging UIs - I ask Claude to read the logs. I don't need debugging tools - I describe the problem and Claude fixes it.
+Setup, debugging, and customization should happen through Codex in the repo, not through dashboards or shell-side setup wizards. The assistant should be the primary interface.
 
-The codebase assumes you have an AI collaborator. It doesn't need to be excessively self-documenting or self-debugging because Claude is always there.
+### Skills Over Feature Sprawl
 
-### Skills Over Features
-
-When people contribute, they shouldn't add "Telegram support alongside WhatsApp." They should contribute a skill like `/add-telegram` that transforms the codebase. Users fork the repo, run skills to customize, and end up with clean code that does exactly what they need - not a bloated system trying to support everyone's use case simultaneously.
+Core messaging paths can be bundled when they are central to first-run usability. Everything else should prefer repo skills that transform the fork directly instead of inflating the core runtime.
 
 ---
 
-## RFS (Request for Skills)
+## Product Shape
 
-Skills we'd love contributors to build:
+NanoDex is a personal Codex assistant with:
 
-### Communication Channels
-Skills to add or switch to different messaging platforms:
-- `/add-telegram` - Add Telegram as an input channel
-- `/add-slack` - Add Slack as an input channel
-- `/add-discord` - Add Discord as an input channel
-- `/add-sms` - Add SMS via Twilio or similar
-- `/convert-to-telegram` - Replace WhatsApp with Telegram entirely
+- a small Node.js host orchestrator
+- per-group Docker isolation
+- per-group memory via `groups/*/AGENTS.md`
+- shared memory via `groups/global/AGENTS.md`
+- scheduled tasks
+- repo-local skills under `.agents/skills`
 
-### Container Runtime
-The project uses Docker by default (cross-platform). For macOS users who prefer Apple Container:
-- `/convert-to-apple-container` - Switch from Docker to Apple Container (macOS-only)
+Bundled communication channels:
 
-### Platform Support
-- `/setup-linux` - Make the full setup work on Linux (depends on Docker conversion)
-- `/setup-windows` - Windows support via WSL2 + Docker
+- WhatsApp
+- Telegram
+- Slack
+- Discord
 
----
-
-## Vision
-
-A personal Claude assistant accessible via WhatsApp, with minimal custom code.
-
-**Core components:**
-- **Claude Agent SDK** as the core agent
-- **Containers** for isolated agent execution (Linux VMs)
-- **WhatsApp** as the primary I/O channel
-- **Persistent memory** per conversation and globally
-- **Scheduled tasks** that run Claude and can message back
-- **Web access** for search and browsing
-- **Browser automation** via agent-browser
-
-**Implementation approach:**
-- Use existing tools (WhatsApp connector, Claude Agent SDK, MCP servers)
-- Minimal glue code
-- File-based systems where possible (CLAUDE.md for memory, folders for groups)
+Other integrations should generally arrive as skills or deliberate fork changes.
 
 ---
 
-## Architecture Decisions
+## Runtime Requirements
 
-### Message Routing
-- A router listens to WhatsApp and routes messages based on configuration
-- Only messages from registered groups are processed
-- Trigger: `@Andy` prefix (case insensitive), configurable via `ASSISTANT_NAME` env var
-- Unregistered groups are ignored completely
+### Host Runtime
 
-### Memory System
-- **Per-group memory**: Each group has a folder with its own `CLAUDE.md`
-- **Global memory**: Root `CLAUDE.md` is read by all groups, but only writable from "main" (self-chat)
-- **Files**: Groups can create/read files in their folder and reference them
-- Agent runs in the group's folder, automatically inherits both CLAUDE.md files
+- Receive messages from configured channels
+- Store messages, groups, sessions, and tasks in SQLite
+- Route each registered group to its own isolated container session
+- Keep the host process understandable and auditable
 
-### Session Management
-- Each group maintains a conversation session (via Claude Agent SDK)
-- Sessions auto-compact when context gets too long, preserving critical information
+### Group Isolation
 
-### Container Isolation
-- All agents run inside containers (lightweight Linux VMs)
-- Each agent invocation spawns a container with mounted directories
-- Containers provide filesystem isolation - agents can only see mounted paths
-- Bash access is safe because commands run inside the container, not on the host
-- Browser automation via agent-browser with Chromium in the container
+Each group should get:
 
-### Scheduled Tasks
-- Users can ask Claude to schedule recurring or one-time tasks from any group
-- Tasks run as full agents in the context of the group that created them
-- Tasks have access to all tools including Bash (safe in container)
-- Tasks can optionally send messages to their group via `send_message` tool, or complete silently
-- Task runs are logged to the database with duration and result
-- Schedule types: cron expressions, intervals (ms), or one-time (ISO timestamp)
-- From main: can schedule tasks for any group, view/manage all tasks
-- From other groups: can only manage that group's tasks
+- its own writable workspace
+- its own Codex thread/session state
+- its own IPC namespace
+- its own instruction file at `groups/<group>/AGENTS.md`
 
-### Group Management
-- New groups are added explicitly via the main channel
-- Groups are registered in SQLite (via the main channel or IPC `register_group` command)
-- Each group gets a dedicated folder under `groups/`
-- Groups can have additional directories mounted via `containerConfig`
+The main/admin group may also inspect the host project through a read-only mount.
 
-### Main Channel Privileges
-- Main channel is the admin/control group (typically self-chat)
-- Can write to global memory (`groups/CLAUDE.md`)
-- Can schedule tasks for any group
-- Can view and manage tasks from all groups
-- Can configure additional directory mounts for any group
+### Memory Model
+
+- Shared/global memory lives in `groups/global/AGENTS.md`
+- Per-group memory lives in `groups/<group>/AGENTS.md`
+- Durable group-specific notes should live in that group's workspace
+- Legacy `CLAUDE.md` files may be read for compatibility, but AGENTS-first behavior is the target
+
+### Scheduling
+
+- Users can ask NanoDex to schedule recurring or one-off work
+- Scheduled tasks execute in the same group-scoped container model
+- Main-group users can manage all tasks; non-main groups are scoped to their own work
 
 ---
 
-## Integration Points
+## Setup Requirements
 
-### WhatsApp
-- Using baileys library for WhatsApp Web connection
-- Messages stored in SQLite, polled by router
-- QR code authentication during setup
+The intended first-run experience is:
 
-### Scheduler
-- Built-in scheduler runs on the host, spawns containers for task execution
-- Custom `nanoclaw` MCP server (inside container) provides scheduling tools
-- Tools: `schedule_task`, `list_tasks`, `pause_task`, `resume_task`, `cancel_task`, `send_message`
-- Tasks stored in SQLite with run history
-- Scheduler loop checks for due tasks every minute
-- Tasks execute Claude Agent SDK in containerized group context
+1. User runs `npm start`
+2. NanoDex prepares local dependencies and runtime prerequisites
+3. If setup is incomplete, Codex takes over in the terminal
+4. Codex configures a bundled channel, authenticates it, registers the main group, and restarts NanoDex when needed
 
-### Web Access
-- Built-in WebSearch and WebFetch tools
-- Standard Claude Agent SDK capabilities
+The user should not need to understand:
 
-### Browser Automation
-- agent-browser CLI with Chromium in container
-- Snapshot-based interaction with element references (@e1, @e2, etc.)
-- Screenshots, PDFs, video recording
-- Authentication state persistence
+- git remotes for channels
+- branch merge mechanics
+- hidden service wiring
+- separate shell-side setup menus
 
 ---
 
-## Setup & Customization
+## Naming and Behavior
 
-### Philosophy
-- Minimal configuration files
-- Setup and customization done via Claude Code
-- Users clone the repo and run Claude Code to configure
-- Each user gets a custom setup matching their exact needs
-
-### Skills
-- `/setup` - Install dependencies, authenticate WhatsApp, configure scheduler, start services
-- `/customize` - General-purpose skill for adding capabilities (new channels like Telegram, new integrations, behavior changes)
-- `/update` - Pull upstream changes, merge with customizations, run migrations
-
-### Deployment
-- Runs on local Mac via launchd
-- Single Node.js process handles everything
+- Default assistant name remains configurable through `ASSISTANT_NAME`
+- Trigger behavior can vary by channel, but the assistant identity should stay coherent
+- Outbound behavior should stay concise and chat-friendly
 
 ---
 
-## Personal Configuration (Reference)
+## Non-Goals
 
-These are the creator's settings, stored here for reference:
+NanoDex should not become:
 
-- **Trigger**: `@Andy` (case insensitive)
-- **Response prefix**: `Andy:`
-- **Persona**: Default Claude (no custom personality)
-- **Main channel**: Self-chat (messaging yourself in WhatsApp)
+- a multi-tenant hosted platform
+- a plugin marketplace in the runtime core
+- a giant integration catalog by default
+- a dashboard-heavy agent product
 
----
-
-## Project Name
-
-**NanoClaw** - A reference to Clawdbot (now OpenClaw).
+If a change pushes the repo in that direction, it is probably the wrong change unless it clearly improves the personal fork model without growing complexity in the core.

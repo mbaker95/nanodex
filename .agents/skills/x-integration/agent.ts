@@ -4,6 +4,10 @@
  * These tools run inside the container and communicate with the host via IPC.
  * The host-side implementation is in host.ts.
  *
+ * Legacy note: this draft still targets the old Claude-era tool helper and is
+ * retained as a porting reference until the X skill is rebuilt natively for
+ * the current NanoDex Codex runtime.
+ *
  * Note: This file is compiled in the container, not on the host.
  * The @ts-ignore is needed because the SDK is only available in the container.
  */

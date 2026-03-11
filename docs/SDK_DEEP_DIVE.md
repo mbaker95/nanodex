@@ -1,3 +1,7 @@
+# Historical Upstream Reference
+
+This document describes the old NanoClaw Claude/Anthropic runtime. It is retained for migration context only and is not the live NanoDex implementation.
+
 # Claude Agent SDK Deep Dive
 
 Findings from reverse-engineering `@anthropic-ai/claude-agent-sdk` v0.2.29–0.2.34 to understand how `query()` works, why agent teams subagents were being killed, and how to fix it. Supplemented with official SDK reference docs.

@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import Database from 'better-sqlite3';
+import {
+  applyAssistantName,
+  renderAgentsTemplate,
+} from './register.ts';
 
 /**
  * Tests for the register step.
@@ -214,23 +218,28 @@ describe('parameterized SQL registration', () => {
 
 describe('file templating', () => {
   it('replaces assistant name in AGENTS.md content', () => {
-    let content = '# Andy\n\nYou are Andy, a personal assistant.';
+    const content = '# Andy\n\nYou are Andy, a personal assistant.';
 
-    content = content.replace(/^# Andy$/m, '# Nova');
-    content = content.replace(/You are Andy/g, 'You are Nova');
-
-    expect(content).toBe('# Nova\n\nYou are Nova, a personal assistant.');
+    expect(applyAssistantName(content, 'Nova')).toBe(
+      '# Nova\n\nYou are Nova, a personal assistant.',
+    );
   });
 
   it('handles names with special regex characters', () => {
-    let content = '# Andy\n\nYou are Andy.';
+    const content = '# Andy\n\nYou are Andy.';
+    const updated = applyAssistantName(content, 'C.L.A.U.D.E');
 
-    const newName = 'C.L.A.U.D.E';
-    content = content.replace(/^# Andy$/m, `# ${newName}`);
-    content = content.replace(/You are Andy/g, `You are ${newName}`);
+    expect(updated).toContain('# C.L.A.U.D.E');
+    expect(updated).toContain('You are C.L.A.U.D.E.');
+  });
 
-    expect(content).toContain('# C.L.A.U.D.E');
-    expect(content).toContain('You are C.L.A.U.D.E.');
+  it('renders AGENTS templates with the assistant name', () => {
+    const content = renderAgentsTemplate(
+      '# {{ASSISTANT_NAME}}\n\nYou are {{ASSISTANT_NAME}}.',
+      'Nova',
+    );
+
+    expect(content).toBe('# Nova\n\nYou are Nova.');
   });
 
   it('updates .env ASSISTANT_NAME line', () => {

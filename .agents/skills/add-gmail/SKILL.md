@@ -15,9 +15,7 @@ Check if `src/channels/gmail.ts` exists. If it does, skip to Phase 3 (Setup). Th
 
 ### Ask the user
 
-Use `AskUserQuestion`:
-
-AskUserQuestion: Should incoming emails be able to trigger the agent?
+Ask the user directly: should incoming emails be able to trigger the agent?
 
 - **Yes** — Full channel mode: the agent listens on Gmail and responds to incoming emails automatically
 - **No** — Tool-only: the agent gets full Gmail tools (read, send, search, draft) but won't monitor the inbox. No channel code is added.
@@ -55,7 +53,7 @@ If the merge reports conflicts, resolve them by reading the conflicted files and
 
 ### Add email handling instructions (Channel mode only)
 
-If the user chose channel mode, append the following to `groups/main/CLAUDE.md` (before the formatting section):
+If the user chose channel mode, append the following to `groups/main/AGENTS.md` (before the formatting section):
 
 ```markdown
 ## Email Notifications
@@ -157,7 +155,7 @@ Tell the user:
 
 Tell the user to send themselves a test email. The agent should pick it up within a minute. Monitor: `tail -f logs/nanodex.log | grep -iE "(gmail|email)"`.
 
-Once verified, offer filter customization via `AskUserQuestion` — by default, only emails in the Primary inbox trigger the agent (Promotions, Social, Updates, and Forums are excluded). The user can keep this default or narrow further by sender, label, or keywords. No code changes needed for filters.
+Once verified, offer filter customization directly. By default, only emails in the Primary inbox trigger the agent (Promotions, Social, Updates, and Forums are excluded). The user can keep this default or narrow further by sender, label, or keywords. No code changes are needed for filters.
 
 ### Check logs if needed
 

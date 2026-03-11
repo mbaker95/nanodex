@@ -1,3 +1,7 @@
+# Historical Upstream Reference
+
+This document describes the old NanoClaw skills architecture. It is retained for background only and does not describe the live NanoDex runtime or setup model.
+
 # NanoClaw Skills Architecture
 
 ## What Skills Are For

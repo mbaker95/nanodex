@@ -26,7 +26,7 @@ Run all steps automatically. Only pause for user input when explicitly needed.
 
 ### 1. Get Parallel AI API Key
 
-Use `AskUserQuestion: Do you have a Parallel AI API key, or should I help you get one?`
+Ask the user directly whether they already have a Parallel AI API key or want help creating one.
 
 **If they have one:**
 Collect it now.
@@ -133,9 +133,9 @@ allowedTools: [
 ],
 ```
 
-### 5. Add Usage Instructions to CLAUDE.md
+### 5. Add Usage Instructions to AGENTS.md
 
-Add Parallel AI usage instructions to `groups/main/CLAUDE.md`:
+Add Parallel AI usage instructions to `groups/main/AGENTS.md`:
 
 Find the "## What You Can Do" section and add after the existing bullet points:
 ```markdown
@@ -172,25 +172,25 @@ You have access to two Parallel AI research tools:
 
 **Speed:** Slower (1-20 minutes depending on depth)
 **Cost:** Higher (varies by processor tier)
-**Permission:** ALWAYS use `AskUserQuestion` before using this tool
+**Permission:** Always ask the user explicitly before using this tool
 
 **How to ask permission:**
 ```
-AskUserQuestion: I can do deep research on [topic] using Parallel's Task API. This will take 2-5 minutes and provide comprehensive analysis with citations. Should I proceed?
+I can do deep research on [topic] using Parallel's Task API. This will take 2-5 minutes and provide comprehensive analysis with citations. Should I proceed?
 ```
 
 **After permission - DO NOT BLOCK! Use scheduler instead:**
 
 1. Create the task using `mcp__parallel-task__create_task_run`
 2. Get the `run_id` from the response
-3. Create a polling scheduled task using `mcp__nanoclaw__schedule_task`:
+3. Create a polling scheduled task using `mcp__nanodex__schedule_task`:
    ```
    Prompt: "Check Parallel AI task run [run_id] and send results when ready.
 
    1. Use the Parallel Task MCP to check the task status
    2. If status is 'completed', extract the results
-   3. Send results to user with mcp__nanoclaw__send_message
-   4. Use mcp__nanoclaw__complete_scheduled_task to mark this task as done
+   3. Send results to user with mcp__nanodex__send_message
+   4. Use the NanoDex task tools to mark this task as done
 
    If status is still 'running' or 'pending', do nothing (task will run again in 30s).
    If status is 'failed', send error message and complete the task."
@@ -290,6 +290,6 @@ To remove Parallel AI integration:
 
 1. Remove from .env: `sed -i.bak '/PARALLEL_API_KEY/d' .env`
 2. Revert changes to container-runner.ts and agent-runner/src/index.ts
-3. Remove Web Research Tools section from groups/main/CLAUDE.md
+3. Remove Web Research Tools section from groups/main/AGENTS.md
 4. Rebuild: `./container/build.sh && npm run build`
 5. Restart: `launchctl kickstart -k gui/$(id -u)/com.nanodex` (macOS) or `systemctl --user restart nanodex` (Linux)

@@ -1,6 +1,6 @@
 ---
 name: add-image-vision
-description: Add image vision to NanoDex agents. Resizes and processes WhatsApp image attachments, then sends them to Claude as multimodal content blocks.
+description: Add image vision to NanoDex agents. Resizes and processes WhatsApp image attachments, then sends them to Codex as multimodal content blocks.
 ---
 
 # Image Vision Skill
@@ -12,7 +12,7 @@ Adds the ability for NanoDex agents to see and understand images sent via WhatsA
 1. Check if `src/image.ts` exists — skip to Phase 3 if already applied
 2. Confirm `sharp` is installable (native bindings require build tools)
 
-**Prerequisite:** WhatsApp must be installed first (`skill/whatsapp` merged). This skill modifies WhatsApp channel files.
+**Prerequisite:** The bundled WhatsApp channel must already be configured. This skill modifies WhatsApp channel files.
 
 ## Phase 2: Apply Code Changes
 

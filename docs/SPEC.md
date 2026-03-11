@@ -42,7 +42,15 @@ The main group also gets a read-only mirror of the project at `/workspace/projec
 
 ## Auth
 
-NanoDex expects OpenAI/Codex credentials in `.env` or the host environment:
+NanoDex prefers the host's existing Codex login and falls back to API-key auth when login state is unavailable.
+
+Supported login sources include:
+
+- `~/.codex/auth.json`
+- host keyring-backed Codex credentials
+- cached per-group NanoDex session auth
+
+Fallback API-key auth uses `.env` or the host environment:
 
 ```bash
 OPENAI_API_KEY=...
@@ -50,7 +58,7 @@ OPENAI_API_KEY=...
 CODEX_API_KEY=...
 ```
 
-Optional:
+Optional API overrides:
 
 ```bash
 OPENAI_BASE_URL=...

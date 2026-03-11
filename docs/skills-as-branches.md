@@ -1,3 +1,7 @@
+# Historical Upstream Reference
+
+This document describes the old NanoClaw skill-branch model. It is retained for background only and does not describe the current NanoDex bundled-channel flow.
+
 # Skills as Branches
 
 ## Overview

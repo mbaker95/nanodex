@@ -1,25 +1,51 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  ci:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm ci
-
-      - name: Format check
-        run: npm run format:check
+      - name: Install root dependencies
+        run: npm ci
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
-      - name: Tests
-        run: npx vitest run
+      - name: Build host runtime
+        run: npm run build
+
+      - name: Runtime-focused tests
+        run: >
+          npm run test --
+          src/codex-runtime-env.test.ts
+          src/container-runner.test.ts
+          src/container-runtime.test.ts
+          setup/environment.test.ts
+          setup/service.test.ts
+          src/channels/registry.test.ts
+
+      - name: Install container runner dependencies
+        run: npm ci
+        working-directory: container/agent-runner
+
+      - name: Build container runner
+        run: npm run build
+        working-directory: container/agent-runner
+
+      - name: Build Docker image
+        run: docker build -t nanodex-agent:ci .
+        working-directory: container
+
+      - name: Smoke test Docker image
+        run: docker run -i --rm --entrypoint /bin/echo nanodex-agent:ci "Container OK"

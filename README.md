@@ -21,7 +21,7 @@ The canonical philosophy lives in [PHILOSOPHY.md](PHILOSOPHY.md).
 - Small enough to understand and safe to modify
 - True isolation through per-group Docker workspaces
 - Built for a personal fork, not a generic framework
-- Bundled channels for WhatsApp, Telegram, Slack, and Discord
+- WhatsApp-first by default, with optional bundled channels for Telegram, Slack, and Discord
 - Codex-native setup, debugging, and customization
 - Shared and per-group memory through `AGENTS.md`
 - Repo-local skills that add capabilities without bloating core
@@ -52,22 +52,27 @@ That is the standard way to start NanoDex. On first launch, NanoDex prepares the
 
 **Faithful to NanoClaw.** NanoDex should stay as close as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native tools and workflows.
 
+**WhatsApp-first.** The canonical NanoClaw path is a personal assistant reachable through WhatsApp. Other bundled channels exist, but they are secondary to that default shape.
+
 ## Requirements
 
 - Node.js 20 or newer
 - Docker running locally
 - a local Codex login, or an `OPENAI_API_KEY` / `CODEX_API_KEY`
 
-## Bundled Channels
+## Default Channel
 
-NanoDex now ships with built-in channel support for:
+The default NanoDex path is WhatsApp. If you want the most faithful NanoClaw-style setup, start there.
 
-- WhatsApp
+## Optional Bundled Channels
+
+NanoDex also ships with built-in support for:
+
 - Telegram
 - Slack
 - Discord
 
-On first run, Codex should help you choose one of those channels and finish auth plus registration from the same `npm start` flow.
+On first run, Codex should recommend WhatsApp unless you explicitly ask for something else, then finish auth and registration from the same `npm start` flow.
 
 ## Authentication
 

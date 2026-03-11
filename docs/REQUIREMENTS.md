@@ -42,6 +42,10 @@ Core messaging paths can be bundled when they are central to first-run usability
 
 NanoDex should stay as close as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native tools and workflows. The underlying agent stack can change. The character of the project should not.
 
+### WhatsApp as the Default Shape
+
+The most faithful NanoClaw interpretation treats WhatsApp as the default product path. Other channels may be available, but they should remain secondary to that default shape in setup flow and product framing.
+
 ---
 
 ## Product Shape
@@ -55,9 +59,12 @@ NanoDex is a personal Codex assistant with:
 - scheduled tasks
 - repo-local skills under `.agents/skills`
 
-Bundled communication channels:
+Default communication path:
 
 - WhatsApp
+
+Secondary bundled channels:
+
 - Telegram
 - Slack
 - Discord

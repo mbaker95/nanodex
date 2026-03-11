@@ -36,6 +36,12 @@ Shared and per-group memory should live in `AGENTS.md` files:
 
 Core communication paths can be bundled when they are central to first-run usability. Beyond that, new capabilities should prefer repo skills or direct fork changes instead of inflating the base runtime.
 
+### WhatsApp Is the Canonical Default
+
+The most faithful NanoClaw interpretation keeps WhatsApp as the default product path.
+
+Other channels can exist and even ship in the repo when that improves setup, but they should remain clearly secondary to the main NanoClaw-shaped experience. NanoDex should not present every channel as an equal pillar of the product.
+
 ### One Coherent Runtime
 
 `npm start`, bootstrap, setup, runtime behavior, and repo guidance should all point to the same experience. If NanoDex says the agent is the interface, the code should behave that way.

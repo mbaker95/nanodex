@@ -5,23 +5,23 @@
 <h1 align="center">NanoDex</h1>
 
 <p align="center">
-  A self-hosted Codex assistant with per-group memory, isolated Docker runtimes, and repo-local skills.
+  A self-hosted Codex assistant with isolated Docker runtimes, per-group memory, and a codebase small enough to reshape safely in your own fork.
 </p>
 
 ## Overview
 
-NanoDex is a Codex-native fork of NanoClaw. It is built for people who want a personal assistant they can run themselves, organize by group or channel, and extend without turning everything into one shared chat thread.
+NanoDex is a Codex-native fork of NanoClaw. It is built for people who want a personal assistant they can run themselves, understand end to end, and reshape in their own fork without turning everything into one shared chat thread.
 
-Each group runs with its own workspace, session state, instructions, and tools. Shared behavior lives in `AGENTS.md` and `.agents/skills`, while the host orchestrator manages routing, persistence, scheduling, and container lifecycle.
+Each group runs with its own workspace, session state, instructions, and tools. Shared behavior lives in `AGENTS.md` and `.agents/skills`, while the host orchestrator stays small: routing, persistence, scheduling, and container lifecycle.
 
-## Highlights
+## Why NanoDex
 
-- Codex-native runtime with local login support by default
-- Per-group Docker isolation for workspaces and sessions
+- Small enough to understand and safe to modify
+- True isolation through per-group Docker workspaces
+- Built for a personal fork, not a generic framework
+- Codex-native setup, debugging, and customization
 - Shared and per-group memory through `AGENTS.md`
-- Repo-local skills in `.agents/skills`
-- Built-in scheduling, IPC tools, and group registration
-- Support for Codex multi-agent workflows where the Codex runtime supports them
+- Repo-local skills that add capabilities without bloating core
 
 ## Quick Start
 
@@ -31,9 +31,21 @@ cd nanodex
 npm start
 ```
 
-That is the standard way to start NanoDex.
+That is the standard way to start NanoDex. On first launch, NanoDex prepares the local environment and hands setup to Codex in your terminal.
 
-On first launch, NanoDex will prepare the local environment, build what it needs, and guide you through any remaining setup required to get the assistant running.
+## Philosophy
+
+**Small enough to understand.** NanoDex should stay small enough that one person can understand the whole system and safely let Codex modify it.
+
+**Secure by isolation.** Agents should only see what is explicitly mounted. Isolation matters more than application-layer permission theater.
+
+**Built for your fork.** NanoDex is not meant to become a generic framework. The point is to shape your own copy until it fits your exact workflow.
+
+**Code over config.** Prefer changing the code over introducing more configuration surfaces. A small codebase is easier to reason about than a large matrix of settings.
+
+**AI-native.** Setup, debugging, and customization should happen through Codex, not through hand-built wizards, dashboards, or sprawling control panels.
+
+**Skills over features.** New capabilities should land as skills that transform a fork, not as more default behavior in core.
 
 ## Requirements
 
@@ -126,7 +138,7 @@ Shared instructions and reusable workflows live in:
 
 ## Codex Experience
 
-NanoDex uses native Codex concepts rather than recreating Claude-specific behavior on top.
+NanoDex uses native Codex concepts rather than recreating Claude-specific behavior on top. The intended interface is still the agent itself: ask Codex to inspect the repo, install a channel, debug a failure, or reshape the fork directly.
 
 Built-in Codex commands you can use directly:
 

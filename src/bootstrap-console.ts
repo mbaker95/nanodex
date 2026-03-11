@@ -23,8 +23,9 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     'NanoDex is running in bootstrap mode because setup is incomplete.',
     '',
     'You are operating directly on the NanoDex host repository from an interactive Codex CLI session.',
-    'Use the repo skills and the local workspace to finish setup.',
-    'Prefer doing the work yourself instead of handing the user command lists.',
+    "NanoDex is meant to stay small, understandable, and easy to reshape in the user's fork.",
+    'Use the repo skills and the local workspace to finish setup directly in the codebase.',
+    'Prefer doing the work yourself instead of handing the user command lists or building ad-hoc setup wizards.',
     'Ask only for information you truly need from the user.',
     'If a restart is required, say so clearly.',
     '',
@@ -33,7 +34,7 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     `Connected channels: ${connectedChannels}`,
     `Registered groups: ${context.registeredGroupCount}`,
     '',
-    'Start by checking the repo state and then ask which channel the user wants to set up first.',
+    'Start by checking the repo state, then help the user choose and install the first channel from inside this session.',
   ].join('\n');
 }
 

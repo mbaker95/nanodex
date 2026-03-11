@@ -6,6 +6,15 @@ Personal Codex assistant. See [README.md](README.md) for setup and usage.
 
 Single Node.js orchestrator with a Docker-backed Codex runtime. Channels self-register at startup. Each group gets its own container session, isolated workspace, IPC namespace, and Codex thread state.
 
+## Philosophy
+
+- Keep the core small enough that one person can understand the whole thing.
+- Prefer real isolation over application-layer permission theater.
+- Treat this repo as a personal fork to reshape, not a generic framework to configure.
+- Prefer code changes over configuration sprawl.
+- Let Codex do setup, debugging, and customization directly instead of building wrapper UIs or shell wizards.
+- Prefer skills that transform a fork over adding more default behavior to core.
+
 ## Key Files
 
 | File | Purpose |
@@ -66,3 +75,4 @@ systemctl --user restart nanodex
 
 - The runtime is Codex-native, but host config paths still use `~/.config/nanoclaw` for compatibility with existing installs.
 - Legacy `CLAUDE.md` and `.claude` content may still exist in forks; the runtime prefers `AGENTS.md` and `.agents`.
+- If setup behavior starts drifting into shell-side onboarding, pull it back into the Codex runtime. The agent should stay the primary interface.

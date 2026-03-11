@@ -26,6 +26,9 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     "NanoDex is meant to stay small, understandable, and easy to reshape in the user's fork.",
     'Use the repo skills and the local workspace to finish setup directly in the codebase.',
     'Prefer doing the work yourself instead of handing the user command lists or building ad-hoc setup wizards.',
+    'Assume the user does not know which channels are bundled by default.',
+    'If setup is incomplete, begin with the $setup skill immediately instead of waiting for the user to name it.',
+    'If no channels are installed yet, say that plainly and recommend WhatsApp as the default first channel unless the user asks for something else.',
     'Ask only for information you truly need from the user.',
     'If a restart is required, say so clearly.',
     '',
@@ -97,7 +100,9 @@ export async function runBootstrapConsole(
         return;
       }
 
-      reject(new Error(`Codex bootstrap exited with code ${code ?? 'unknown'}`));
+      reject(
+        new Error(`Codex bootstrap exited with code ${code ?? 'unknown'}`),
+      );
     });
   });
 }

@@ -1,218 +1,122 @@
 ---
 name: add-telegram
-description: Add Telegram as a channel. Can replace WhatsApp entirely or run alongside it. Also configurable as a control-only channel (triggers actions) or passive channel (receives notifications only).
+description: Add Telegram as a channel. Can replace WhatsApp entirely or run alongside it. Also configurable as a control-only channel or passive channel.
 ---
 
 # Add Telegram Channel
 
-This skill adds Telegram support to NanoDex, then walks through interactive setup.
+Use this skill when the user wants Telegram as a primary or additional channel.
+
+The expected experience is simple:
+1. install the Telegram channel code into the user's fork
+2. collect or create the bot token
+3. register the main Telegram chat
+4. verify NanoDex can respond
+
+Do the work yourself. Only stop when the user must create a bot, paste a token, choose a chat, or perform a Telegram-side action such as disabling privacy mode.
+
+## User Experience Rules
+
+- Do not ask the user to understand remotes, branches, or code layout.
+- Do not tell the user to invoke another skill manually.
+- Prefer one clear question at a time in normal conversation. Do not use `AskUserQuestion`.
+- If the user does not already have a bot token, walk them through `@BotFather` plainly and wait for the token.
+- On Windows or PowerShell hosts, prefer cross-platform commands or direct file edits over bash-only snippets.
 
 ## Phase 1: Pre-flight
 
-### Check if already applied
+1. Check whether `src/channels/telegram.ts` already exists.
+2. Check whether `TELEGRAM_BOT_TOKEN` is already configured.
+3. If code is missing, install it in Phase 2.
+4. If code exists but token is missing, skip to Phase 3.
+5. If token exists but registration is missing, skip to Phase 4.
 
-Check if `src/channels/telegram.ts` exists. If it does, skip to Phase 3 (Setup). The code changes are already in place.
+## Phase 2: Install the Channel Code
 
-### Ask the user
+Install the Telegram channel into the fork. Prefer doing the git work directly:
 
-Use `AskUserQuestion` to collect configuration:
+1. Ensure a `telegram` remote exists:
+   - `https://github.com/qwibitai/nanoclaw-telegram.git`
+2. Fetch that remote.
+3. Merge the relevant branch into the current fork.
+4. Resolve conflicts yourself if needed.
 
-AskUserQuestion: Do you have a Telegram bot token, or do you need to create one?
-
-If they have one, collect it now. If not, we'll create one in Phase 3.
-
-## Phase 2: Apply Code Changes
-
-### Ensure channel remote
-
-```bash
-git remote -v
-```
-
-If `telegram` is missing, add it:
-
-```bash
-git remote add telegram https://github.com/qwibitai/nanoclaw-telegram.git
-```
-
-### Merge the skill branch
-
-```bash
-git fetch telegram main
-git merge telegram/main
-```
-
-This merges in:
-- `src/channels/telegram.ts` (TelegramChannel class with self-registration via `registerChannel`)
-- `src/channels/telegram.test.ts` (unit tests with grammy mock)
-- `import './telegram.js'` appended to the channel barrel file `src/channels/index.ts`
-- `grammy` npm dependency in `package.json`
+The expected code changes include:
+- `src/channels/telegram.ts`
+- `src/channels/telegram.test.ts`
+- the Telegram import added to `src/channels/index.ts`
+- required npm dependencies
 - `TELEGRAM_BOT_TOKEN` in `.env.example`
 
-If the merge reports conflicts, resolve them by reading the conflicted files and understanding the intent of both sides.
+After merging:
+1. run `npm install`
+2. run `npm run build`
+3. run the Telegram channel tests if present
 
-### Validate code changes
+Do not continue until the build is clean.
 
-```bash
-npm install
-npm run build
-npx vitest run src/channels/telegram.test.ts
-```
+## Phase 3: Configure Telegram Auth
 
-All tests must pass (including the new Telegram tests) and build must be clean before proceeding.
+Ask the user whether they already have a Telegram bot token.
 
-## Phase 3: Setup
+If not, guide them through `@BotFather`:
+1. search for `@BotFather`
+2. run `/newbot`
+3. choose a display name
+4. choose a username ending in `bot`
+5. paste the token back into the session
 
-### Create Telegram Bot (if needed)
+Once the token is available:
+1. write it to `.env`
+2. sync the runtime env if needed
+3. explain Telegram privacy mode for group chats
 
-If the user doesn't have a bot token, tell them:
+For group chats, tell the user they may need to disable privacy mode in `@BotFather` so the bot can see normal messages, not only commands and mentions.
 
-> I need you to create a Telegram bot:
->
-> 1. Open Telegram and search for `@BotFather`
-> 2. Send `/newbot` and follow prompts:
->    - Bot name: Something friendly (e.g., "Andy Assistant")
->    - Bot username: Must end with "bot" (e.g., "andy_ai_bot")
-> 3. Copy the bot token (looks like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`)
+## Phase 4: Register the Main Chat
 
-Wait for the user to provide the token.
+Ask where the user wants to talk to NanoDex:
+- direct message with the bot
+- existing Telegram group
+- control-only or passive use if that is what they asked for
 
-### Configure environment
+Then ask for or help discover the chat ID.
 
-Add to `.env`:
+Use `npx tsx setup/index.ts --step register ...` to register:
+- a main chat when Telegram is their main channel
+- an additional trigger-based chat otherwise
 
-```bash
-TELEGRAM_BOT_TOKEN=<their-token>
-```
-
-Channels auto-enable when their credentials are present — no extra configuration needed.
-
-Sync to container environment:
-
-```bash
-mkdir -p data/env && cp .env data/env/env
-```
-
-The container reads environment from `data/env/env`, not `.env` directly.
-
-### Disable Group Privacy (for group chats)
-
-Tell the user:
-
-> **Important for group chats**: By default, Telegram bots only see @mentions and commands in groups. To let the bot see all messages:
->
-> 1. Open Telegram and search for `@BotFather`
-> 2. Send `/mybots` and select your bot
-> 3. Go to **Bot Settings** > **Group Privacy** > **Turn off**
->
-> This is optional if you only want trigger-based responses via @mentioning the bot.
-
-### Build and restart
-
-```bash
-npm run build
-launchctl kickstart -k gui/$(id -u)/com.nanodex  # macOS
-# Linux: systemctl --user restart nanodex
-```
-
-## Phase 4: Registration
-
-### Get Chat ID
-
-Tell the user:
-
-> 1. Open your bot in Telegram (search for its username)
-> 2. Send `/chatid` — it will reply with the chat ID
-> 3. For groups: add the bot to the group first, then send `/chatid` in the group
-
-Wait for the user to provide the chat ID (format: `tg:123456789` or `tg:-1001234567890`).
-
-### Register the chat
-
-The chat ID, name, and folder name are needed. Use `npx tsx setup/index.ts --step register` with the appropriate flags.
-
-For a main chat (responds to all messages):
-
-```bash
-npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_main" --trigger "@${ASSISTANT_NAME}" --channel telegram --no-trigger-required --is-main
-```
-
-For additional chats (trigger-only):
-
-```bash
-npx tsx setup/index.ts --step register -- --jid "tg:<chat-id>" --name "<chat-name>" --folder "telegram_<group-name>" --trigger "@${ASSISTANT_NAME}" --channel telegram
-```
+Choose a sensible default folder name such as `telegram_main` for the main chat.
 
 ## Phase 5: Verify
 
-### Test the connection
+After registration:
+1. run `npm run build` if code or env changed
+2. restart the NanoDex service/runtime if needed
+3. tell the user the exact first message to send
 
-Tell the user:
+Example verification guidance:
+- main chat: “Send any message to the bot”
+- additional chat: “Send `@Assistant hello`” or mention the bot if required
 
-> Send a message to your registered Telegram chat:
-> - For main chat: Any message works
-> - For non-main: `@Andy hello` or @mention the bot
->
-> The bot should respond within a few seconds.
+If verification fails, inspect logs and fix the issue before falling back to a troubleshooting list.
 
-### Check logs if needed
+## Troubleshooting Priorities
 
-```bash
-tail -f logs/nanodex.log
-```
+If Telegram does not respond, check these in order:
+1. the Telegram channel code is installed
+2. `TELEGRAM_BOT_TOKEN` is present where NanoDex reads env
+3. the chat is registered
+4. the service/runtime is running
+5. Telegram privacy mode matches the intended behavior
 
-## Troubleshooting
+If the bot only responds to commands or mentions in a group, explain and fix privacy mode before changing anything else.
 
-### Bot not responding
+## Completion
 
-Check:
-1. `TELEGRAM_BOT_TOKEN` is set in `.env` AND synced to `data/env/env`
-2. Chat is registered in SQLite (check with: `sqlite3 store/messages.db "SELECT * FROM registered_groups WHERE jid LIKE 'tg:%'"`)
-3. For non-main chats: message includes trigger pattern
-4. Service is running: `launchctl list | grep nanodex` (macOS) or `systemctl --user status nanodex` (Linux)
-
-### Bot only responds to @mentions in groups
-
-Group Privacy is enabled (default). Fix:
-1. `@BotFather` > `/mybots` > select bot > **Bot Settings** > **Group Privacy** > **Turn off**
-2. Remove and re-add the bot to the group (required for the change to take effect)
-
-### Getting chat ID
-
-If `/chatid` doesn't work:
-- Verify token: `curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe"`
-- Check bot is started: `tail -f logs/nanodex.log`
-
-## After Setup
-
-If running `npm run dev` while the service is active:
-```bash
-# macOS:
-launchctl unload ~/Library/LaunchAgents/com.nanodex.plist
-npm run dev
-# When done testing:
-launchctl load ~/Library/LaunchAgents/com.nanodex.plist
-# Linux:
-# systemctl --user stop nanodex
-# npm run dev
-# systemctl --user start nanodex
-```
-
-## Agent Swarms (Teams)
-
-After completing the Telegram setup, use `AskUserQuestion`:
-
-AskUserQuestion: Would you like to add Agent Swarm support? Without it, Agent Teams still work — they just operate behind the scenes. With Swarm support, each subagent appears as a different bot in the Telegram group so you can see who's saying what and have interactive team sessions.
-
-If they say yes, invoke the `/add-telegram-swarm` skill.
-
-## Removal
-
-To remove Telegram integration:
-
-1. Delete `src/channels/telegram.ts` and `src/channels/telegram.test.ts`
-2. Remove `import './telegram.js'` from `src/channels/index.ts`
-3. Remove `TELEGRAM_BOT_TOKEN` from `.env`
-4. Remove Telegram registrations from SQLite: `sqlite3 store/messages.db "DELETE FROM registered_groups WHERE jid LIKE 'tg:%'"`
-5. Uninstall: `npm uninstall grammy`
-6. Rebuild: `npm run build && launchctl kickstart -k gui/$(id -u)/com.nanodex` (macOS) or `npm run build && systemctl --user restart nanodex` (Linux)
+Finish by telling the user:
+- which Telegram chat was registered
+- whether it is the main chat
+- what trigger to use
+- whether privacy mode matters for that chat
+- the exact first message to send for a live test

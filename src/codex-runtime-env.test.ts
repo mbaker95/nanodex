@@ -1,13 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockExistsSync, mockReadEnvFile } = vi.hoisted(() => ({
+const {
+  mockExistsSync,
+  mockReadFileSync,
+  mockReadEnvFile,
+  mockGetPassword,
+} = vi.hoisted(() => ({
   mockExistsSync: vi.fn(),
+  mockReadFileSync: vi.fn(),
   mockReadEnvFile: vi.fn(() => ({})),
+  mockGetPassword: vi.fn(),
 }));
 
 vi.mock('fs', () => ({
   default: {
     existsSync: (...args: unknown[]) => mockExistsSync(...args),
+    readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
+    realpathSync: {
+      native: (value: string) => value,
+    },
+  },
+}));
+
+vi.mock('keytar', () => ({
+  default: {
+    getPassword: (...args: unknown[]) => mockGetPassword(...args),
   },
 }));
 
@@ -37,29 +54,61 @@ describe('loadCodexRuntimeEnv', () => {
     process.env = { ...originalEnv };
   });
 
-  it('prefers login auth when auth.json exists', () => {
+  it('prefers login auth when auth.json exists', async () => {
     mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue('{"id":"host-auth"}');
 
-    const runtimeEnv = loadCodexRuntimeEnv();
+    const runtimeEnv = await loadCodexRuntimeEnv();
 
     expect(runtimeEnv.authMode).toBe('login');
+    expect(runtimeEnv.authSource).toBe('file');
     expect(runtimeEnv.authFilePath).toMatch(/auth\.json$/);
+    expect(runtimeEnv.authJson).toContain('"id":"host-auth"');
   });
 
-  it('falls back to api key auth when login auth is missing', () => {
+  it('uses host keyring auth when auth.json is missing', async () => {
     mockExistsSync.mockReturnValue(false);
+    mockGetPassword.mockResolvedValue('{"id":"keyring-auth"}');
+
+    const runtimeEnv = await loadCodexRuntimeEnv();
+
+    expect(runtimeEnv.authMode).toBe('login');
+    expect(runtimeEnv.authSource).toBe('keyring');
+    expect(runtimeEnv.authJson).toContain('"id":"keyring-auth"');
+  });
+
+  it('uses existing session auth before falling back to api key', async () => {
+    mockExistsSync.mockImplementation((filePath: string) =>
+      filePath.endsWith('session-auth.json'),
+    );
+    mockReadFileSync.mockImplementation((filePath: string) =>
+      filePath.endsWith('session-auth.json') ? '{"id":"session-auth"}' : '',
+    );
+    mockGetPassword.mockResolvedValue(null);
+
+    const runtimeEnv = await loadCodexRuntimeEnv('/tmp/session-auth.json');
+
+    expect(runtimeEnv.authMode).toBe('login');
+    expect(runtimeEnv.authSource).toBe('session');
+    expect(runtimeEnv.authJson).toContain('"id":"session-auth"');
+  });
+
+  it('falls back to api key auth when login auth is unavailable', async () => {
+    mockExistsSync.mockReturnValue(false);
+    mockGetPassword.mockResolvedValue(null);
     process.env.OPENAI_API_KEY = 'sk-test';
 
-    const runtimeEnv = loadCodexRuntimeEnv();
+    const runtimeEnv = await loadCodexRuntimeEnv();
 
     expect(runtimeEnv.authMode).toBe('api_key');
     expect(runtimeEnv.apiKey).toBe('sk-test');
   });
 
-  it('throws when neither login auth nor api key is available', () => {
+  it('throws when neither login auth nor api key is available', async () => {
     mockExistsSync.mockReturnValue(false);
+    mockGetPassword.mockResolvedValue(null);
 
-    expect(() => loadCodexRuntimeEnv()).toThrow(
+    await expect(loadCodexRuntimeEnv()).rejects.toThrow(
       /Missing Codex login auth .* no CODEX_API_KEY\/OPENAI_API_KEY fallback/i,
     );
   });

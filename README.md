@@ -24,7 +24,9 @@ cd nanodex
 cp .env.example .env
 ```
 
-By default NanoDex prefers your local Codex login. If you have already run `codex` on the host and signed in with ChatGPT, NanoDex will reuse that login automatically from `~/.codex/auth.json`.
+By default NanoDex prefers your local Codex login. If you have already run `codex` on the host and signed in with ChatGPT, NanoDex will reuse that login automatically from `~/.codex/auth.json` or from the host OS keyring if Codex stored credentials there instead.
+
+When login auth is detected, NanoDex copies the resolved Codex auth into the group's session volume before starting the container. That means host file-backed auth, keyring-backed auth, and existing per-group session auth all work without binding your host auth file directly into the container.
 
 API keys are the fallback. Set one of these in `.env` only if you do not want login-based auth or do not have a host login available:
 
@@ -122,5 +124,5 @@ This is a best-effort port of NanoClaw's agent-swarm story. Codex supports nativ
 ## Notes
 
 - Host config paths still use `~/.config/nanoclaw` for compatibility with existing installs.
-- Host Codex login defaults to `~/.codex/auth.json`. You can override that with `CODEX_AUTH_FILE`.
+- Host Codex login defaults to `~/.codex/auth.json`, but NanoDex also supports keyring-backed Codex auth and cached per-group session auth. You can override the host file lookup with `CODEX_AUTH_FILE`.
 - Legacy `CLAUDE.md` and `.claude` files can coexist during migration, but NanoDex prefers `AGENTS.md` and `.agents`.

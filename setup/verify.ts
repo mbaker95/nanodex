@@ -10,6 +10,7 @@ import path from 'path';
 import Database from 'better-sqlite3';
 
 import { STORE_DIR } from '../src/config.js';
+import { loadCodexRuntimeEnv } from '../src/codex-runtime-env.js';
 import { readEnvFile } from '../src/env.js';
 import { logger } from '../src/logger.js';
 import { getServiceManager, isRoot } from './platform.js';
@@ -28,7 +29,7 @@ export async function run(_args: string[]): Promise<void> {
   logger.info({ service }, 'Service status');
 
   const containerRuntime = detectContainerRuntime();
-  const credentials = detectCredentials(projectRoot);
+  const credentials = await detectCredentials(projectRoot);
   const { configuredChannels, channelAuth } = detectChannelAuth(projectRoot);
   const registeredGroups = countRegisteredGroups();
   const mountAllowlist = fs.existsSync(
@@ -149,27 +150,21 @@ function detectContainerRuntime(): string {
   }
 }
 
-function detectCredentials(projectRoot: string): string {
-  const hostAuthFile = process.env.CODEX_AUTH_FILE ||
-    process.env.CODEX_HOME ||
-    path.join(os.homedir(), '.codex');
-  const authFilePath = hostAuthFile.endsWith('auth.json')
-    ? hostAuthFile
-    : path.join(hostAuthFile, 'auth.json');
-
-  if (fs.existsSync(authFilePath)) {
+async function detectCredentials(projectRoot: string): Promise<string> {
+  try {
+    await loadCodexRuntimeEnv();
     return 'configured';
-  }
+  } catch {
+    const envFile = path.join(projectRoot, '.env');
+    if (!fs.existsSync(envFile)) {
+      return 'missing';
+    }
 
-  const envFile = path.join(projectRoot, '.env');
-  if (!fs.existsSync(envFile)) {
-    return 'missing';
+    const envContent = fs.readFileSync(envFile, 'utf-8');
+    return /^(CODEX_API_KEY|OPENAI_API_KEY)=/m.test(envContent)
+      ? 'configured'
+      : 'missing';
   }
-
-  const envContent = fs.readFileSync(envFile, 'utf-8');
-  return /^(CODEX_API_KEY|OPENAI_API_KEY)=/m.test(envContent)
-    ? 'configured'
-    : 'missing';
 }
 
 function detectChannelAuth(projectRoot: string): {

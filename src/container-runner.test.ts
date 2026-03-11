@@ -51,7 +51,7 @@ vi.mock('./mount-security.js', () => ({
 }));
 
 vi.mock('./codex-runtime-env.js', () => ({
-  loadCodexRuntimeEnv: vi.fn(() => ({
+  loadCodexRuntimeEnv: vi.fn(async () => ({
     authMode: 'api_key',
     apiKey: 'sk-test',
   })),

@@ -66,7 +66,6 @@ function resolveAgentsFile(baseDir: string): string | null {
 function buildVolumeMounts(
   group: RegisteredGroup,
   isMain: boolean,
-  runtimeEnv: CodexRuntimeEnv,
 ): VolumeMount[] {
   const mounts: VolumeMount[] = [];
   const projectRoot = process.cwd();
@@ -131,14 +130,6 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  if (runtimeEnv.authMode === 'login' && runtimeEnv.authFilePath) {
-    mounts.push({
-      hostPath: runtimeEnv.authFilePath,
-      containerPath: '/home/node/.codex/auth.json',
-      readonly: false,
-    });
-  }
-
   const groupIpcDir = resolveGroupIpcPath(group.folder);
   fs.mkdirSync(path.join(groupIpcDir, 'messages'), { recursive: true });
   fs.mkdirSync(path.join(groupIpcDir, 'tasks'), { recursive: true });
@@ -175,6 +166,16 @@ function buildVolumeMounts(
   }
 
   return mounts;
+}
+
+function syncLoginAuth(groupFolder: string, runtimeEnv: CodexRuntimeEnv): void {
+  if (runtimeEnv.authMode !== 'login' || !runtimeEnv.authJson) {
+    return;
+  }
+
+  const groupSessionsDir = path.join(DATA_DIR, 'sessions', groupFolder, '.codex');
+  fs.mkdirSync(groupSessionsDir, { recursive: true });
+  fs.writeFileSync(path.join(groupSessionsDir, 'auth.json'), runtimeEnv.authJson);
 }
 
 function buildContainerArgs(
@@ -232,8 +233,16 @@ export async function runContainerAgent(
   const groupDir = resolveGroupFolderPath(group.folder);
   fs.mkdirSync(groupDir, { recursive: true });
 
-  const runtimeEnv = loadCodexRuntimeEnv();
-  const mounts = buildVolumeMounts(group, input.isMain, runtimeEnv);
+  const sessionAuthPath = path.join(
+    DATA_DIR,
+    'sessions',
+    group.folder,
+    '.codex',
+    'auth.json',
+  );
+  const runtimeEnv = await loadCodexRuntimeEnv(sessionAuthPath);
+  syncLoginAuth(group.folder, runtimeEnv);
+  const mounts = buildVolumeMounts(group, input.isMain);
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanodex-${safeName}-${Date.now()}`;
   const containerArgs = buildContainerArgs(mounts, containerName, runtimeEnv);
@@ -247,6 +256,7 @@ export async function runContainerAgent(
           `${mount.hostPath} -> ${mount.containerPath}${mount.readonly ? ' (ro)' : ''}`,
       ),
       authMode: runtimeEnv.authMode,
+      authSource: runtimeEnv.authSource,
       containerArgs: containerArgs.join(' '),
     },
     'Container mount configuration',

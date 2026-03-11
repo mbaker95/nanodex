@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -5,9 +6,12 @@ import path from 'path';
 import { readEnvFile } from './env.js';
 
 export type CodexAuthMode = 'login' | 'api_key';
+export type CodexAuthSource = 'file' | 'keyring' | 'session';
 
 export interface CodexRuntimeEnv {
   authMode: CodexAuthMode;
+  authSource?: CodexAuthSource;
+  authJson?: string;
   apiKey?: string;
   authFilePath?: string;
   baseUrl?: string;
@@ -22,7 +26,45 @@ function resolveAuthFilePath(env: Record<string, string>, hostCodexHome: string)
   return process.env.CODEX_AUTH_FILE || env.CODEX_AUTH_FILE || path.join(hostCodexHome, 'auth.json');
 }
 
-export function loadCodexRuntimeEnv(): CodexRuntimeEnv {
+function readJsonFile(filePath: string): string | null {
+  if (!fs.existsSync(filePath)) return null;
+
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  JSON.parse(raw);
+  return raw;
+}
+
+function computeKeyringStoreKey(codexHome: string): string {
+  let canonicalPath = codexHome;
+  try {
+    canonicalPath = fs.realpathSync.native(codexHome);
+  } catch {
+    canonicalPath = path.resolve(codexHome);
+  }
+
+  const digest = createHash('sha256').update(canonicalPath).digest('hex');
+  return `cli|${digest.slice(0, 16)}`;
+}
+
+async function readAuthJsonFromKeyring(codexHome: string): Promise<string | null> {
+  try {
+    const keytar = await import('keytar');
+    const serialized = await keytar.default.getPassword(
+      'Codex Auth',
+      computeKeyringStoreKey(codexHome),
+    );
+    if (!serialized) return null;
+
+    JSON.parse(serialized);
+    return serialized;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadCodexRuntimeEnv(
+  existingSessionAuthPath?: string,
+): Promise<CodexRuntimeEnv> {
   const env = readEnvFile([
     'CODEX_AUTH_MODE',
     'CODEX_AUTH_FILE',
@@ -45,7 +87,6 @@ export function loadCodexRuntimeEnv(): CodexRuntimeEnv {
 
   const hostCodexHome = resolveHostCodexHome(env);
   const authFilePath = resolveAuthFilePath(env, hostCodexHome);
-  const hasLoginAuth = fs.existsSync(authFilePath);
 
   const apiKey =
     process.env.CODEX_API_KEY ||
@@ -61,12 +102,37 @@ export function loadCodexRuntimeEnv(): CodexRuntimeEnv {
     env.OPENAI_MODEL;
 
   if (requestedAuthMode === 'login') {
-    if (hasLoginAuth) {
+    const hostAuthJson = readJsonFile(authFilePath);
+    if (hostAuthJson) {
       return {
         authMode: 'login',
+        authSource: 'file',
+        authJson: hostAuthJson,
         authFilePath,
         model: model || undefined,
       };
+    }
+
+    const keyringAuthJson = await readAuthJsonFromKeyring(hostCodexHome);
+    if (keyringAuthJson) {
+      return {
+        authMode: 'login',
+        authSource: 'keyring',
+        authJson: keyringAuthJson,
+        model: model || undefined,
+      };
+    }
+
+    if (existingSessionAuthPath) {
+      const sessionAuthJson = readJsonFile(existingSessionAuthPath);
+      if (sessionAuthJson) {
+        return {
+          authMode: 'login',
+          authSource: 'session',
+          authJson: sessionAuthJson,
+          model: model || undefined,
+        };
+      }
     }
 
     if (apiKey) {
@@ -79,7 +145,7 @@ export function loadCodexRuntimeEnv(): CodexRuntimeEnv {
     }
 
     throw new Error(
-      `Missing Codex login auth at ${authFilePath} and no CODEX_API_KEY/OPENAI_API_KEY fallback is configured.`,
+      `Missing Codex login auth in ${authFilePath}, the host keyring, and the group session, with no CODEX_API_KEY/OPENAI_API_KEY fallback configured.`,
     );
   }
 

@@ -20,6 +20,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@openai/codex": "^0.114.0",
+    "@openai/codex-sdk": "^0.114.0",
     "better-sqlite3": "^12.4.4",
     "cron-parser": "^5.5.0",
     "keytar": "^7.9.0",

@@ -113,7 +113,9 @@ function buildVolumeMounts(
     });
   }
 
-  const skillsDir = path.join(projectRoot, 'container', 'skills');
+  const skillsDir = fs.existsSync(path.join(projectRoot, '.agents', 'skills'))
+    ? path.join(projectRoot, '.agents', 'skills')
+    : path.join(projectRoot, 'container', 'skills');
   if (fs.existsSync(skillsDir)) {
     mounts.push({
       hostPath: skillsDir,

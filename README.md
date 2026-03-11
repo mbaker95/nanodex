@@ -35,8 +35,8 @@ On first run, `npm start` will automatically:
 2. install dependencies if `node_modules` is missing
 3. repair native Node modules if your local install is stale or incomplete
 4. build the TypeScript app
-5. build or refresh the Docker image
-6. start NanoDex
+5. start NanoDex
+6. if NanoDex is not configured yet, start Codex in your terminal and guide you through setup
 
 You do not need to manually run `cp .env.example .env`.
 
@@ -80,7 +80,7 @@ Start NanoDex:
 npm start
 ```
 
-If NanoDex starts but reports that no channels are connected, that means the core runtime is healthy and you just have not configured WhatsApp, Telegram, Slack, or another channel yet.
+If NanoDex is not configured yet, `npm start` now launches a bootstrap Codex session in your terminal instead of failing early. That setup session is where you should install WhatsApp, Telegram, or any other channel.
 
 Prepare everything without launching the long-running service:
 
@@ -134,6 +134,8 @@ Shared behavior lives in:
 ## Codex Experience
 
 NanoDex uses native Codex concepts instead of trying to fake Claude behavior.
+
+On an unconfigured install, the first Codex session happens directly in your terminal. That bootstrap session is responsible for setup and customization. Once you have at least one working channel and registered group, NanoDex switches into its normal runtime model and each group runs in its own Docker-backed Codex session.
 
 Built-in Codex commands you can use directly:
 

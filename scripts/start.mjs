@@ -176,9 +176,9 @@ function main() {
   ensureDependencies();
   ensureNativeDependencies();
   buildApp();
-  buildDockerImage();
 
   if (prepareOnly) {
+    buildDockerImage();
     console.log('NanoDex is prepared.');
     return;
   }

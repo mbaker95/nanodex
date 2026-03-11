@@ -3,7 +3,9 @@
  * All runtime-specific logic lives here so swapping runtimes means changing one file.
  */
 import { execSync } from 'child_process';
+import path from 'path';
 
+import { CONTAINER_IMAGE } from './config.js';
 import { logger } from './logger.js';
 
 /** The container runtime binary name. */
@@ -57,6 +59,23 @@ export function ensureContainerRuntimeRunning(): void {
       '===============================================================\n',
     );
     throw new Error('Container runtime is required but failed to start');
+  }
+}
+
+/** Build the NanoDex image if it does not exist locally yet. */
+export function ensureContainerImageAvailable(): void {
+  try {
+    execSync(`${CONTAINER_RUNTIME_BIN} image inspect ${CONTAINER_IMAGE}`, {
+      stdio: 'pipe',
+      timeout: 10000,
+    });
+    logger.debug({ image: CONTAINER_IMAGE }, 'Container image already present');
+  } catch {
+    logger.info({ image: CONTAINER_IMAGE }, 'Building missing container image');
+    execSync(`${CONTAINER_RUNTIME_BIN} build -t ${CONTAINER_IMAGE} .`, {
+      cwd: path.join(process.cwd(), 'container'),
+      stdio: 'inherit',
+    });
   }
 }
 

@@ -38,12 +38,6 @@ const channelSetupOptions = {
     repo: 'https://github.com/qwibitai/nanoclaw-gmail.git',
   },
 };
-const channelAliases = Object.fromEntries(
-  Object.values(channelSetupOptions).flatMap((option) => [
-    [option.remote, option],
-    [option.name.toLowerCase(), option],
-  ]),
-);
 
 function resolveCommand(command) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -238,25 +232,8 @@ function printChannelSetupInstructions(option) {
   console.log('');
 }
 
-function resolveChannelSelection(answer) {
-  const trimmed = answer.trim().toLowerCase();
-
-  if (trimmed === '') {
-    return channelSetupOptions['1'];
-  }
-
-  return channelSetupOptions[trimmed] ?? channelAliases[trimmed] ?? null;
-}
-
 function hasCleanGitWorktree() {
-  let result;
-
-  try {
-    result = capture('git', ['status', '--short']);
-  } catch {
-    return false;
-  }
-
+  const result = capture('git', ['status', '--short']);
   if (result.status !== 0) {
     return false;
   }
@@ -316,7 +293,7 @@ function installChannel(option) {
 async function runFirstRunWizard() {
   console.log('');
   console.log('NanoDex is installed, but it still needs its first channel.');
-  console.log('Choose what you want to connect first. Press Enter to install WhatsApp.');
+  console.log('Pick what you want to connect first. If you are unsure, start with WhatsApp.');
   console.log('');
   console.log('1. WhatsApp');
   console.log('2. Telegram');
@@ -327,37 +304,34 @@ async function runFirstRunWizard() {
   console.log('');
 
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    const channelOverride = process.env.NANODEX_CHANNEL?.trim() ?? '';
-    const selectedChannel = channelOverride
-      ? resolveChannelSelection(channelOverride)
-      : null;
-
-    if (selectedChannel) {
-      installChannel(selectedChannel);
-      return;
-    }
-
-    console.log(
-      'Run `npm start` in a normal terminal to choose a channel, or set `NANODEX_CHANNEL=whatsapp|telegram|slack|discord|gmail` and run it again.',
-    );
+    printChannelSetupInstructions(channelSetupOptions['1']);
     return;
   }
 
   const rl = readline.createInterface({ input, output });
 
   try {
-    const answer = (
-      await rl.question('Choose a channel [1-6, Enter for WhatsApp]: ')
-    ).trim();
+    const answer = (await rl.question('Choose a channel [1-6, Enter for WhatsApp]: ')).trim();
 
     if (answer === '6') {
       console.log('No channel selected.');
       return;
     }
 
-    const option = resolveChannelSelection(answer);
+    const option = channelSetupOptions[answer || '1'];
     if (!option) {
       console.log('Unknown choice.');
+      return;
+    }
+
+    const installAnswer = (
+      await rl.question(`Install ${option.name} automatically now? [Y/n]: `)
+    )
+      .trim()
+      .toLowerCase();
+
+    if (installAnswer === 'n' || installAnswer === 'no') {
+      printChannelSetupInstructions(option);
       return;
     }
 

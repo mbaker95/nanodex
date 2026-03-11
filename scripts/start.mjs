@@ -2,7 +2,7 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline/promises';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { fileURLToPath } from 'url';
 import { stdin as input, stdout as output } from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -99,30 +99,6 @@ function commandSucceeds(command, args, options = {}) {
   return result.status === 0;
 }
 
-function capture(command, args, options = {}) {
-  const resolvedCommand = resolveCommand(command);
-  const useShell = process.platform === 'win32' && resolvedCommand.endsWith('.cmd');
-  const result = spawnSync(
-    useShell
-      ? [resolvedCommand, ...args].map(quoteShellArg).join(' ')
-      : resolvedCommand,
-    useShell ? [] : args,
-    {
-      cwd: projectRoot,
-      encoding: 'utf-8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: useShell,
-      ...options,
-    },
-  );
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  return result;
-}
-
 function ensureEnvFile() {
   const envPath = path.join(projectRoot, '.env');
   const envExamplePath = path.join(projectRoot, '.env.example');
@@ -202,19 +178,29 @@ function buildApp() {
   run('npm', ['run', 'build']);
 }
 
-async function detectInstalledChannels() {
-  try {
-    const channelsIndexUrl = pathToFileURL(
-      path.join(projectRoot, 'dist', 'channels', 'index.js'),
-    ).href;
-    const registryUrl = pathToFileURL(
-      path.join(projectRoot, 'dist', 'channels', 'registry.js'),
-    ).href;
+function detectInstalledChannels() {
+  const script = [
+    "await import('./dist/channels/index.js');",
+    "const { getRegisteredChannelNames } = await import('./dist/channels/registry.js');",
+    'console.log(JSON.stringify(getRegisteredChannelNames()));',
+  ].join('\n');
 
-    await import(channelsIndexUrl);
-    const { getRegisteredChannelNames } = await import(registryUrl);
-    const registeredChannelNames = getRegisteredChannelNames();
-    return Array.isArray(registeredChannelNames) ? registeredChannelNames : null;
+  const result = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', script],
+    {
+      cwd: projectRoot,
+      encoding: 'utf-8',
+    },
+  );
+
+  if (result.status !== 0) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(result.stdout.trim());
+    return Array.isArray(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -222,7 +208,7 @@ async function detectInstalledChannels() {
 
 function printChannelSetupInstructions(option) {
   console.log('');
-  console.log(`NanoDex is ready, but the ${option.name} channel is not installed yet.`);
+  console.log(`NanoDex core is ready, but the ${option.name} channel is not installed yet.`);
   console.log('Run these commands to add it, then start NanoDex again:');
   console.log('');
   console.log(`git remote add ${option.remote} ${option.repo}`);
@@ -232,69 +218,12 @@ function printChannelSetupInstructions(option) {
   console.log('');
 }
 
-function hasCleanGitWorktree() {
-  const result = capture('git', ['status', '--short']);
-  if (result.status !== 0) {
-    return false;
-  }
-
-  return result.stdout.trim() === '';
-}
-
-function ensureChannelRemote(option) {
-  const remotes = capture('git', ['remote']).stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!remotes.includes(option.remote)) {
-    run('git', ['remote', 'add', option.remote, option.repo]);
-    return;
-  }
-
-  run('git', ['remote', 'set-url', option.remote, option.repo]);
-}
-
-function installChannel(option) {
-  console.log('');
-  console.log(`Installing the ${option.name} channel...`);
-
-  if (!hasCleanGitWorktree()) {
-    console.log('');
-    console.log(
-      'NanoDex will not auto-merge a channel branch into a dirty working tree.',
-    );
-    console.log(
-      'Commit or discard your local changes first, then run `npm start` again.',
-    );
-    console.log('');
-    printChannelSetupInstructions(option);
-    process.exit(1);
-  }
-
-  try {
-    ensureChannelRemote(option);
-    run('git', ['fetch', option.remote, 'main']);
-    run('git', ['merge', `${option.remote}/main`, '--no-edit']);
-    run('npm', ['install']);
-    ensureNativeDependencies();
-    buildApp();
-    console.log(`${option.name} channel installed.`);
-  } catch (err) {
-    console.log('');
-    console.log(`Failed to auto-install the ${option.name} channel.`);
-    console.log(err instanceof Error ? err.message : String(err));
-    console.log('');
-    printChannelSetupInstructions(option);
-    process.exit(1);
-  }
-}
-
 async function runFirstRunWizard() {
   console.log('');
-  console.log('NanoDex is installed, but it still needs its first channel.');
-  console.log('Pick what you want to connect first. If you are unsure, start with WhatsApp.');
+  console.log('NanoDex core is installed, but this repo does not include a messaging channel yet.');
+  console.log('Original NanoClaw/NanoDex setup expected the setup agent to add a channel branch first.');
   console.log('');
+  console.log('What do you want to set up?');
   console.log('1. WhatsApp');
   console.log('2. Telegram');
   console.log('3. Slack');
@@ -311,31 +240,20 @@ async function runFirstRunWizard() {
   const rl = readline.createInterface({ input, output });
 
   try {
-    const answer = (await rl.question('Choose a channel [1-6, Enter for WhatsApp]: ')).trim();
+    const answer = (await rl.question('Choose a channel [1-6]: ')).trim();
 
-    if (answer === '6') {
+    if (answer === '6' || answer === '') {
       console.log('No channel selected.');
       return;
     }
 
-    const option = channelSetupOptions[answer || '1'];
+    const option = channelSetupOptions[answer];
     if (!option) {
       console.log('Unknown choice.');
       return;
     }
 
-    const installAnswer = (
-      await rl.question(`Install ${option.name} automatically now? [Y/n]: `)
-    )
-      .trim()
-      .toLowerCase();
-
-    if (installAnswer === 'n' || installAnswer === 'no') {
-      printChannelSetupInstructions(option);
-      return;
-    }
-
-    installChannel(option);
+    printChannelSetupInstructions(option);
   } finally {
     rl.close();
   }
@@ -369,7 +287,7 @@ async function main() {
   ensureNativeDependencies();
   buildApp();
 
-  const installedChannels = await detectInstalledChannels();
+  const installedChannels = detectInstalledChannels();
   if (installedChannels?.length === 0) {
     await runFirstRunWizard();
     process.exit(1);

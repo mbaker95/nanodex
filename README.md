@@ -5,19 +5,23 @@
 <h1 align="center">NanoDex</h1>
 
 <p align="center">
-  A personal Codex assistant that runs each group in its own Docker container with isolated memory, tools, and session state.
+  A self-hosted Codex assistant with per-group memory, isolated Docker runtimes, and repo-local skills.
 </p>
 
-## Why NanoDex
+## Overview
 
-NanoDex is for people who want a Codex-powered assistant they can run themselves, customize deeply, and keep organized by group or channel instead of stuffing everything into one global chat.
+NanoDex is a Codex-native fork of NanoClaw. It is built for people who want a personal assistant they can run themselves, organize by group or channel, and extend without turning everything into one shared chat thread.
 
-- Codex-native runtime with ChatGPT login support by default
-- Docker isolation for each group workspace and session
-- `AGENTS.md` memory per group plus shared global instructions
-- repo-local Codex skills in `.agents/skills`
-- built-in task scheduling, IPC tools, and group registration
-- best-effort support for Codex multi-agent workflows
+Each group runs with its own workspace, session state, instructions, and tools. Shared behavior lives in `AGENTS.md` and `.agents/skills`, while the host orchestrator manages routing, persistence, scheduling, and container lifecycle.
+
+## Highlights
+
+- Codex-native runtime with local login support by default
+- Per-group Docker isolation for workspaces and sessions
+- Shared and per-group memory through `AGENTS.md`
+- Repo-local skills in `.agents/skills`
+- Built-in scheduling, IPC tools, and group registration
+- Support for Codex multi-agent workflows where the Codex runtime supports them
 
 ## Quick Start
 
@@ -27,38 +31,29 @@ cd nanodex
 npm start
 ```
 
-That is the normal way to start NanoDex.
+That is the standard way to start NanoDex.
 
-On first run, `npm start` will automatically:
-
-1. create `.env` from `.env.example` if it is missing
-2. install dependencies if `node_modules` is missing
-3. repair native Node modules if your local install is stale or incomplete
-4. build the TypeScript app
-5. start NanoDex
-6. if NanoDex is not configured yet, start Codex in your terminal and guide you through setup
-
-You do not need to manually run `cp .env.example .env`.
+On first launch, NanoDex will prepare the local environment, build what it needs, and guide you through any remaining setup required to get the assistant running.
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 20 or newer
 - Docker running locally
-- a Codex login on the host, or an `OPENAI_API_KEY` / `CODEX_API_KEY`
+- a local Codex login, or an `OPENAI_API_KEY` / `CODEX_API_KEY`
 
 ## Authentication
 
-NanoDex prefers your local Codex login by default.
+NanoDex prefers your existing Codex login on the host machine.
 
-If you have already run `codex` on the host and signed in with ChatGPT, NanoDex will reuse that login automatically. It supports:
+If you have already signed in with the Codex CLI, NanoDex will try to reuse that session automatically. Supported sources include:
 
 - `~/.codex/auth.json`
 - Codex credentials stored in the host keyring
-- cached per-group session auth inside NanoDex
+- cached per-group session auth created by NanoDex
 
-If login auth is not available, NanoDex falls back to API-key auth.
+If login-based auth is unavailable, NanoDex falls back to API-key auth.
 
-Example `.env` override:
+Example `.env` values:
 
 ```bash
 OPENAI_API_KEY=your_key_here
@@ -70,9 +65,9 @@ OPENAI_BASE_URL=https://your-endpoint.example.com
 CODEX_MODEL=gpt-5.3-codex
 ```
 
-If you are happy with login-based auth, you usually do not need to edit `.env` at all.
+If you are using your local Codex login, you usually do not need to edit `.env` beyond project-specific overrides.
 
-## Everyday Commands
+## Common Commands
 
 Start NanoDex:
 
@@ -80,9 +75,7 @@ Start NanoDex:
 npm start
 ```
 
-If NanoDex is not configured yet, `npm start` now launches a bootstrap Codex session in your terminal instead of failing early. That setup session is where you should install WhatsApp, Telegram, or any other channel.
-
-Prepare everything without launching the long-running service:
+Prepare the project without starting the long-running runtime:
 
 PowerShell:
 
@@ -111,7 +104,7 @@ npm run build
 npm run test -- src/codex-runtime-env.test.ts src/container-runner.test.ts
 ```
 
-## What It Does
+## How It Works
 
 NanoDex sits between your channels and Codex:
 
@@ -126,16 +119,14 @@ Each registered group gets:
 - its own IPC namespace
 - its own `groups/<group>/AGENTS.md`
 
-Shared behavior lives in:
+Shared instructions and reusable workflows live in:
 
 - `groups/global/AGENTS.md`
 - `.agents/skills/`
 
 ## Codex Experience
 
-NanoDex uses native Codex concepts instead of trying to fake Claude behavior.
-
-On an unconfigured install, the first Codex session happens directly in your terminal. That bootstrap session is responsible for setup and customization. Once you have at least one working channel and registered group, NanoDex switches into its normal runtime model and each group runs in its own Docker-backed Codex session.
+NanoDex uses native Codex concepts rather than recreating Claude-specific behavior on top.
 
 Built-in Codex commands you can use directly:
 
@@ -156,7 +147,7 @@ Repo skills included in this fork:
 
 ## Multi-Agent Workflows
 
-NanoDex enables Codex collaboration features where the Codex CLI supports them, including:
+NanoDex enables Codex collaboration features where available, including:
 
 - `spawn_agent`
 - `send_input`
@@ -164,12 +155,12 @@ NanoDex enables Codex collaboration features where the Codex CLI supports them, 
 - `resume_agent`
 - `close_agent`
 
-This is a practical Codex-native replacement for the old NanoClaw swarm model. It is not identical to the original Claude teams API surface.
+This is a practical Codex-native replacement for the old NanoClaw swarm model, though it is not a one-to-one port of Claude's previous teams surface.
 
 ## Project Structure
 
 - `src/index.ts`: host orchestrator
-- `src/container-runner.ts`: Docker mounts, auth injection, container lifecycle
+- `src/container-runner.ts`: Docker mounts, auth injection, and container lifecycle
 - `container/agent-runner/src/index.ts`: container-side Codex thread loop
 - `container/agent-runner/src/ipc-mcp-stdio.ts`: built-in MCP tools for messaging, tasks, and group control
 - `src/db.ts`: SQLite persistence
@@ -184,7 +175,7 @@ npm run build
 npm run typecheck
 ```
 
-Container-specific work:
+Container-specific checks:
 
 ```bash
 cd container
@@ -197,4 +188,3 @@ docker run -i --rm --entrypoint /bin/echo nanodex-agent:latest "Container OK"
 - NanoDex is a Codex-native fork of NanoClaw.
 - Host config paths still use `~/.config/nanoclaw` for compatibility with existing installs.
 - Legacy `CLAUDE.md` and `.claude` content may still exist in forks, but NanoDex prefers `AGENTS.md` and `.agents`.
-

@@ -47,6 +47,24 @@ function resolveCodexCommand(): string {
   return process.platform === 'win32' ? 'codex.cmd' : 'codex';
 }
 
+function resolveCodexSpawn(
+  args: string[],
+): { command: string; args: string[]; shell: boolean } {
+  if (process.platform === 'win32') {
+    return {
+      command: process.env.ComSpec || 'cmd.exe',
+      args: ['/d', '/s', '/c', resolveCodexCommand(), ...args],
+      shell: false,
+    };
+  }
+
+  return {
+    command: resolveCodexCommand(),
+    args,
+    shell: false,
+  };
+}
+
 export async function runBootstrapConsole(
   context: BootstrapContext,
 ): Promise<void> {
@@ -87,11 +105,13 @@ export async function runBootstrapConsole(
   console.log('Launching Codex in this terminal to complete setup.');
   console.log('');
 
-  const child = spawn(resolveCodexCommand(), args, {
+  const launch = resolveCodexSpawn(args);
+
+  const child = spawn(launch.command, launch.args, {
     cwd: process.cwd(),
     env,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
+    shell: launch.shell,
   });
 
   await new Promise<void>((resolve, reject) => {

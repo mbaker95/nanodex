@@ -37,7 +37,7 @@ On first run, `npm start` will automatically:
 4. build the TypeScript app
 5. detect whether a channel integration is installed
 6. if no channel is installed yet, ask what you want to connect first
-7. install the selected channel branch for you, or show the exact commands if you prefer to do it manually
+7. install the selected channel branch for you
 8. build or refresh the Docker image
 9. start NanoDex
 
@@ -83,7 +83,7 @@ Start NanoDex:
 npm start
 ```
 
-If no channel integration is installed yet, `npm start` now asks what you want to connect first. Press Enter to take the default WhatsApp path, or choose another channel. When the repo is in a clean git state, NanoDex can install that channel for you automatically.
+If no channel integration is installed yet, `npm start` asks what you want to connect first and installs it for you. Press Enter to take the default WhatsApp path.
 
 Prepare everything without launching the long-running service:
 

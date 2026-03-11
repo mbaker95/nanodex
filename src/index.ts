@@ -43,7 +43,12 @@ import {
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { startIpcWatcher } from './ipc.js';
-import { findChannel, formatMessages, formatOutbound } from './router.js';
+import {
+  findChannel,
+  formatMessages,
+  formatOutbound,
+  sanitizeAssistantReply,
+} from './router.js';
 import {
   isSenderAllowed,
   isTriggerAllowed,
@@ -208,6 +213,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   await channel.setTyping?.(chatJid, true);
   let hadError = false;
   let outputSentToUser = false;
+  let pendingReply = '';
 
   const output = await runAgent(group, prompt, chatJid, async (result) => {
     // Streaming output callback — called for each agent result
@@ -216,18 +222,21 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         typeof result.result === 'string'
           ? result.result
           : JSON.stringify(result.result);
-      // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
       logger.info({ group: group.name }, `Agent output: ${raw.slice(0, 200)}`);
+      const text = sanitizeAssistantReply(raw);
       if (text) {
-        await channel.sendMessage(chatJid, text);
-        outputSentToUser = true;
+        pendingReply = text;
       }
       // Only reset idle timer on actual results, not session-update markers (result: null)
       resetIdleTimer();
     }
 
-    if (result.status === 'success') {
+    if (result.status === 'success' && result.result === null) {
+      if (pendingReply) {
+        await channel.sendMessage(chatJid, pendingReply);
+        outputSentToUser = true;
+        pendingReply = '';
+      }
       queue.notifyIdle(chatJid);
     }
 

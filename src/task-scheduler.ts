@@ -19,6 +19,7 @@ import {
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { logger } from './logger.js';
+import { sanitizeAssistantReply } from './router.js';
 import { RegisteredGroup, ScheduledTask } from './types.js';
 
 /**
@@ -148,6 +149,7 @@ async function runTask(
 
   let result: string | null = null;
   let error: string | null = null;
+  let pendingReply = '';
 
   // For group context mode, use the group's current session
   const sessions = deps.getSessions();
@@ -184,12 +186,18 @@ async function runTask(
         deps.onProcess(task.chat_jid, proc, containerName, task.group_folder),
       async (streamedOutput: ContainerOutput) => {
         if (streamedOutput.result) {
-          result = streamedOutput.result;
-          // Forward result to user (sendMessage handles formatting)
-          await deps.sendMessage(task.chat_jid, streamedOutput.result);
+          const cleaned = sanitizeAssistantReply(streamedOutput.result);
+          if (cleaned) {
+            pendingReply = cleaned;
+            result = cleaned;
+          }
           scheduleClose();
         }
-        if (streamedOutput.status === 'success') {
+        if (streamedOutput.status === 'success' && streamedOutput.result === null) {
+          if (pendingReply) {
+            await deps.sendMessage(task.chat_jid, pendingReply);
+            pendingReply = '';
+          }
           deps.queue.notifyIdle(task.chat_jid);
           scheduleClose(); // Close promptly even when result is null (e.g. IPC-only tasks)
         }

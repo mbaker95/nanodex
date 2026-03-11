@@ -28,8 +28,35 @@ export function stripInternalTags(text: string): string {
   return text.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
 }
 
-export function formatOutbound(rawText: string): string {
+function isMetaAssistantLine(line: string): boolean {
+  const normalized = line.trim();
+  if (!normalized) return false;
+
+  return (
+    /^Sent\b/i.test(normalized) ||
+    /^Message sent\.?$/i.test(normalized) ||
+    /^I(?:'m|’m| am)\s+(replying|answering|sending|responding|keeping|working|using)\b/i.test(
+      normalized,
+    )
+  );
+}
+
+export function sanitizeAssistantReply(rawText: string): string {
   const text = stripInternalTags(rawText);
+  if (!text) return '';
+
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .filter((paragraph) => !isMetaAssistantLine(paragraph));
+
+  if (paragraphs.length === 0) return '';
+  return paragraphs.join('\n\n');
+}
+
+export function formatOutbound(rawText: string): string {
+  const text = sanitizeAssistantReply(rawText);
   if (!text) return '';
   return text;
 }

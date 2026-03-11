@@ -5,6 +5,7 @@ import {
   escapeXml,
   formatMessages,
   formatOutbound,
+  sanitizeAssistantReply,
   stripInternalTags,
 } from './router.js';
 import { NewMessage } from './types.js';
@@ -200,6 +201,35 @@ describe('formatOutbound', () => {
     expect(
       formatOutbound('<internal>thinking</internal>The answer is 42'),
     ).toBe('The answer is 42');
+  });
+
+  it('filters meta preambles and keeps the actual answer', () => {
+    expect(
+      formatOutbound(
+        "I'm replying directly to the question.\n\nKingston.",
+      ),
+    ).toBe('Kingston.');
+  });
+
+  it('suppresses send confirmations', () => {
+    expect(formatOutbound('Sent `hello`.')).toBe('');
+    expect(formatOutbound('Message sent.')).toBe('');
+  });
+});
+
+describe('sanitizeAssistantReply', () => {
+  it('preserves normal first-person replies', () => {
+    expect(
+      sanitizeAssistantReply(
+        "I'm here to help with questions, tasks, and admin actions in this chat.",
+      ),
+    ).toBe("I'm here to help with questions, tasks, and admin actions in this chat.");
+  });
+
+  it('drops pure meta narration', () => {
+    expect(
+      sanitizeAssistantReply("I'm answering with the direct factual response."),
+    ).toBe('');
   });
 });
 

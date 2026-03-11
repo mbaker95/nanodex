@@ -1,122 +1,84 @@
-# NanoClaw Security Model
+# NanoDex Security Model
 
 ## Trust Model
 
 | Entity | Trust Level | Rationale |
 |--------|-------------|-----------|
-| Main group | Trusted | Private self-chat, admin control |
-| Non-main groups | Untrusted | Other users may be malicious |
-| Container agents | Sandboxed | Isolated execution environment |
-| WhatsApp messages | User input | Potential prompt injection |
+| Main group | Trusted | Private self-chat with admin permissions |
+| Non-main groups | Untrusted | Other users may be malicious or compromised |
+| Container agents | Sandboxed | Docker/Apple Container boundary plus Codex sandbox settings |
+| Incoming messages | Untrusted input | Potential prompt injection or exfiltration attempts |
 
 ## Security Boundaries
 
-### 1. Container Isolation (Primary Boundary)
+### 1. Container Isolation
 
-Agents execute in containers (lightweight Linux VMs), providing:
-- **Process isolation** - Container processes cannot affect the host
-- **Filesystem isolation** - Only explicitly mounted directories are visible
-- **Non-root execution** - Runs as unprivileged `node` user (uid 1000)
-- **Ephemeral containers** - Fresh environment per invocation (`--rm`)
+Agents execute in a container per active group. The host only exposes explicit mounts and controls lifecycle from outside the sandbox.
 
-This is the primary security boundary. Rather than relying on application-level permission checks, the attack surface is limited by what's mounted.
+- Process isolation between host and agent runtime
+- Filesystem isolation to mounted paths only
+- Non-root execution where supported
+- Ephemeral container instances with persistent per-group session storage only
 
 ### 2. Mount Security
 
-**External Allowlist** - Mount permissions stored at `~/.config/nanoclaw/mount-allowlist.json`, which is:
-- Outside project root
-- Never mounted into containers
-- Cannot be modified by agents
+Mount permissions are controlled by `~/.config/nanoclaw/mount-allowlist.json` for compatibility with existing installs.
 
-**Default Blocked Patterns:**
-```
-.ssh, .gnupg, .aws, .azure, .gcloud, .kube, .docker,
-credentials, .env, .netrc, .npmrc, id_rsa, id_ed25519,
-private_key, .secret
-```
+- The allowlist lives outside the project root
+- It is never mounted into containers
+- Symlinks are resolved before validation
+- Dangerous paths and secret-looking filenames are blocked by default
+- Non-main groups can be forced into read-only mounts via `nonMainReadOnly`
 
-**Protections:**
-- Symlink resolution before validation (prevents traversal attacks)
-- Container path validation (rejects `..` and absolute paths)
-- `nonMainReadOnly` option forces read-only for non-main groups
-
-**Read-Only Project Root:**
-
-The main group's project root is mounted read-only. Writable paths the agent needs (group folder, IPC, `.claude/`) are mounted separately. This prevents the agent from modifying host application code (`src/`, `dist/`, `package.json`, etc.) which would bypass the sandbox entirely on next restart.
+The project root remains read-only for the main group at `/workspace/project`. Writable paths are split out into dedicated mounts for the group workspace, IPC, and per-group Codex session state.
 
 ### 3. Session Isolation
 
-Each group has isolated Claude sessions at `data/sessions/{group}/.claude/`:
-- Groups cannot see other groups' conversation history
-- Session data includes full message history and file contents read
-- Prevents cross-group information disclosure
+Each group receives its own Codex home at `data/sessions/{group}/.codex/`.
+
+- Groups do not share thread history
+- Session transcripts and thread metadata remain scoped to one group
+- Global instructions are shared through `groups/global/AGENTS.md`
+- Group-local instructions live in `groups/{group}/AGENTS.md`
 
 ### 4. IPC Authorization
 
-Messages and task operations are verified against group identity:
+The in-container MCP bridge validates operations against the group identity that launched the container.
 
 | Operation | Main Group | Non-Main Group |
 |-----------|------------|----------------|
-| Send message to own chat | ✓ | ✓ |
-| Send message to other chats | ✓ | ✗ |
-| Schedule task for self | ✓ | ✓ |
-| Schedule task for others | ✓ | ✗ |
-| View all tasks | ✓ | Own only |
-| Manage other groups | ✓ | ✗ |
+| Send message to own chat | Yes | Yes |
+| Send message to other chats | Yes | No |
+| Schedule task for self | Yes | Yes |
+| Schedule task for others | Yes | No |
+| View all tasks | Yes | Own only |
+| Manage other groups | Yes | No |
 
-### 5. Credential Isolation (Credential Proxy)
+### 5. Credential Exposure
 
-Real API credentials **never enter containers**. Instead, the host runs an HTTP credential proxy that injects authentication headers transparently.
+NanoDex no longer uses the old Anthropic credential proxy. Containers receive the API key directly through environment variables so the Codex CLI and SDK can authenticate normally.
 
-**How it works:**
-1. Host starts a credential proxy on `CREDENTIAL_PROXY_PORT` (default: 3001)
-2. Containers receive `ANTHROPIC_BASE_URL=http://host.docker.internal:<port>` and `ANTHROPIC_API_KEY=placeholder`
-3. The SDK sends API requests to the proxy with the placeholder key
-4. The proxy strips placeholder auth, injects real credentials (`x-api-key` or `Authorization: Bearer`), and forwards to `api.anthropic.com`
-5. Agents cannot discover real credentials — not in environment, stdin, files, or `/proc`
+Current implications:
 
-**NOT Mounted:**
-- WhatsApp session (`store/auth/`) - host only
-- Mount allowlist - external, never mounted
-- Any credentials matching blocked patterns
-- `.env` is shadowed with `/dev/null` in the project root mount
+- `CODEX_API_KEY` or `OPENAI_API_KEY` is present in the container environment
+- `.env` is still shadowed from the read-only project mount when possible
+- Real credentials are not written into AGENTS files, IPC files, or group folders by the runtime
+
+This is simpler than the NanoClaw model, but weaker than the previous proxy-based secret isolation. If you need stronger guarantees, run NanoDex on a dedicated host or add a server-side credential broker later.
 
 ## Privilege Comparison
 
 | Capability | Main Group | Non-Main Group |
 |------------|------------|----------------|
 | Project root access | `/workspace/project` (ro) | None |
-| Group folder | `/workspace/group` (rw) | `/workspace/group` (rw) |
-| Global memory | Implicit via project | `/workspace/global` (ro) |
-| Additional mounts | Configurable | Read-only unless allowed |
-| Network access | Unrestricted | Unrestricted |
-| MCP tools | All | All |
+| Group workspace | `/workspace/context/group` (rw) | `/workspace/context/group` (rw) |
+| Global instructions | `/workspace/context/AGENTS.md` (rw from main) | `/workspace/context/AGENTS.md` (ro) |
+| Additional mounts | Configurable | Read-only unless explicitly allowed |
+| Network access | Enabled | Enabled |
+| MCP tools | Full set | Scoped by group authorization |
 
-## Security Architecture Diagram
+## Practical Notes
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        UNTRUSTED ZONE                             │
-│  WhatsApp Messages (potentially malicious)                        │
-└────────────────────────────────┬─────────────────────────────────┘
-                                 │
-                                 ▼ Trigger check, input escaping
-┌──────────────────────────────────────────────────────────────────┐
-│                     HOST PROCESS (TRUSTED)                        │
-│  • Message routing                                                │
-│  • IPC authorization                                              │
-│  • Mount validation (external allowlist)                          │
-│  • Container lifecycle                                            │
-│  • Credential proxy (injects auth headers)                       │
-└────────────────────────────────┬─────────────────────────────────┘
-                                 │
-                                 ▼ Explicit mounts only, no secrets
-┌──────────────────────────────────────────────────────────────────┐
-│                CONTAINER (ISOLATED/SANDBOXED)                     │
-│  • Agent execution                                                │
-│  • Bash commands (sandboxed)                                      │
-│  • File operations (limited to mounts)                            │
-│  • API calls routed through credential proxy                     │
-│  • No real credentials in environment or filesystem              │
-└──────────────────────────────────────────────────────────────────┘
-```
+- Docker remains the primary isolation boundary in this fork.
+- Codex collaboration is enabled, but spawned agents still inherit the same container boundary as the parent thread.
+- Main-group write access to shared instructions is powerful and should be treated as administrator-only.

@@ -54,6 +54,7 @@ import { startSchedulerLoop } from './task-scheduler.js';
 import { runBootstrapConsole } from './bootstrap-console.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
+import { WhatsAppSetupRequiredError } from './channels/whatsapp.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -527,8 +528,11 @@ async function maybeRunBootstrapConsole(
   connectedChannels: Channel[],
 ): Promise<'skip' | 'completed' | 'restart'> {
   const registeredGroupCount = Object.keys(registeredGroups).length;
+  const activeChannels = connectedChannels.filter((channel) =>
+    channel.isConnected(),
+  );
   const needsBootstrap =
-    connectedChannels.length === 0 || registeredGroupCount === 0;
+    activeChannels.length === 0 || registeredGroupCount === 0;
 
   if (!needsBootstrap) {
     return 'skip';
@@ -538,7 +542,7 @@ async function maybeRunBootstrapConsole(
     logger.fatal(
       {
         installedChannels,
-        connectedChannels: connectedChannels.map((channel) => channel.name),
+        connectedChannels: activeChannels.map((channel) => channel.name),
         registeredGroupCount,
       },
       'NanoDex needs bootstrap setup, but no interactive terminal is available',
@@ -549,7 +553,7 @@ async function maybeRunBootstrapConsole(
   const before = getBootstrapFingerprint();
   await runBootstrapConsole({
     installedChannels,
-    connectedChannels: connectedChannels.map((channel) => channel.name),
+    connectedChannels: activeChannels.map((channel) => channel.name),
     registeredGroupCount,
     assistantName: ASSISTANT_NAME,
   });
@@ -624,7 +628,18 @@ async function main(): Promise<void> {
       continue;
     }
     channels.push(channel);
-    await channel.connect();
+    try {
+      await channel.connect();
+    } catch (err) {
+      if (err instanceof WhatsAppSetupRequiredError) {
+        logger.warn(
+          { channel: channelName, error: err.message },
+          'Channel setup is incomplete. Launching bootstrap instead of exiting.',
+        );
+        continue;
+      }
+      throw err;
+    }
   }
 
   const bootstrapResult = await maybeRunBootstrapConsole(

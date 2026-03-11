@@ -99,7 +99,11 @@ vi.mock('@whiskeysockets/baileys', () => {
   };
 });
 
-import { WhatsAppChannel, WhatsAppChannelOpts } from './whatsapp.js';
+import {
+  WhatsAppChannel,
+  WhatsAppChannelOpts,
+  WhatsAppSetupRequiredError,
+} from './whatsapp.js';
 import { getLastGroupSync, updateChatName, setLastGroupSync } from '../db.js';
 
 // --- Test helpers ---
@@ -255,30 +259,19 @@ describe('WhatsAppChannel', () => {
   // --- QR code and auth ---
 
   describe('authentication', () => {
-    it('exits process when QR code is emitted (no auth state)', async () => {
-      vi.useFakeTimers();
-      const mockExit = vi
-        .spyOn(process, 'exit')
-        .mockImplementation(() => undefined as never);
-
+    it('rejects connect() with setup-required error when QR code is emitted', async () => {
       const opts = createTestOpts();
       const channel = new WhatsAppChannel(opts);
 
-      // Start connect but don't await (it won't resolve - process exits)
-      channel.connect().catch(() => {});
+      const connectPromise = channel.connect();
+      await new Promise((r) => setTimeout(r, 0));
 
-      // Flush microtasks so connectInternal registers handlers
-      await vi.advanceTimersByTimeAsync(0);
-
-      // Emit QR code event
       fakeSocket._ev.emit('connection.update', { qr: 'some-qr-data' });
 
-      // Advance timer past the 1000ms setTimeout before exit
-      await vi.advanceTimersByTimeAsync(1500);
-
-      expect(mockExit).toHaveBeenCalledWith(1);
-      mockExit.mockRestore();
-      vi.useRealTimers();
+      await expect(connectPromise).rejects.toBeInstanceOf(
+        WhatsAppSetupRequiredError,
+      );
+      expect(fakeSocket.end).toHaveBeenCalled();
     });
   });
 
@@ -300,11 +293,7 @@ describe('WhatsAppChannel', () => {
       // The channel should attempt to reconnect (calls connectInternal again)
     });
 
-    it('exits on loggedOut disconnect', async () => {
-      const mockExit = vi
-        .spyOn(process, 'exit')
-        .mockImplementation(() => undefined as never);
-
+    it('does not exit process on loggedOut disconnect', async () => {
       const opts = createTestOpts();
       const channel = new WhatsAppChannel(opts);
 
@@ -314,8 +303,7 @@ describe('WhatsAppChannel', () => {
       triggerDisconnect(401);
 
       expect(channel.isConnected()).toBe(false);
-      expect(mockExit).toHaveBeenCalledWith(0);
-      mockExit.mockRestore();
+      expect(fakeSocket.end).not.toHaveBeenCalled();
     });
 
     it('retries reconnection after 5s on failure', async () => {

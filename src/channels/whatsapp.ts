@@ -29,6 +29,15 @@ import { registerChannel, ChannelOpts } from './registry.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+export class WhatsAppSetupRequiredError extends Error {
+  readonly code = 'WHATSAPP_SETUP_REQUIRED';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'WhatsAppSetupRequiredError';
+  }
+}
+
 export interface WhatsAppChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
@@ -44,6 +53,7 @@ export class WhatsAppChannel implements Channel {
   private outgoingQueue: Array<{ jid: string; text: string }> = [];
   private flushing = false;
   private groupSyncTimerStarted = false;
+  private setupRequired = false;
 
   private opts: WhatsAppChannelOpts;
 
@@ -53,11 +63,14 @@ export class WhatsAppChannel implements Channel {
 
   async connect(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      this.connectInternal(resolve).catch(reject);
+      this.connectInternal(resolve, reject).catch(reject);
     });
   }
 
-  private async connectInternal(onFirstOpen?: () => void): Promise<void> {
+  private async connectInternal(
+    onFirstOpen?: () => void,
+    onSetupRequired?: (err: WhatsAppSetupRequiredError) => void,
+  ): Promise<void> {
     const authDir = path.join(STORE_DIR, 'auth');
     fs.mkdirSync(authDir, { recursive: true });
 
@@ -88,16 +101,31 @@ export class WhatsAppChannel implements Channel {
         const msg =
           'WhatsApp authentication required. Continue setup in the NanoDex bootstrap session.';
         logger.error(msg);
+        this.connected = false;
+        this.setupRequired = true;
         if (process.platform === 'darwin') {
           exec(
             `osascript -e 'display notification "${msg}" with title "NanoDex" sound name "Basso"'`,
           );
         }
-        setTimeout(() => process.exit(1), 1000);
+        if (onSetupRequired) {
+          const rejectSetup = onSetupRequired;
+          onSetupRequired = undefined;
+          onFirstOpen = undefined;
+          rejectSetup(new WhatsAppSetupRequiredError(msg));
+        }
+        this.sock.end(undefined);
+        return;
       }
 
       if (connection === 'close') {
         this.connected = false;
+        if (this.setupRequired) {
+          logger.info(
+            'WhatsApp setup is incomplete. Waiting for bootstrap to finish authentication.',
+          );
+          return;
+        }
         const reason = (
           lastDisconnect?.error as { output?: { statusCode?: number } }
         )?.output?.statusCode;
@@ -122,13 +150,19 @@ export class WhatsAppChannel implements Channel {
             }, 5000);
           });
         } else {
-          logger.info(
-            'Logged out. Continue setup in NanoDex to re-authenticate WhatsApp.',
-          );
-          process.exit(0);
+          const msg =
+            'Logged out of WhatsApp. Continue setup in NanoDex to re-authenticate WhatsApp.';
+          logger.info(msg);
+          this.setupRequired = true;
+          if (onSetupRequired) {
+            const rejectSetup = onSetupRequired;
+            onSetupRequired = undefined;
+            rejectSetup(new WhatsAppSetupRequiredError(msg));
+          }
         }
       } else if (connection === 'open') {
         this.connected = true;
+        this.setupRequired = false;
         logger.info('Connected to WhatsApp');
 
         // Announce availability so WhatsApp relays subsequent presence updates (typing indicators)

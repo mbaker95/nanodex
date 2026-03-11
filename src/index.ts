@@ -526,7 +526,13 @@ async function main(): Promise<void> {
     await channel.connect();
   }
   if (channels.length === 0) {
-    logger.fatal('No channels connected');
+    logger.fatal(
+      [
+        'No channels connected.',
+        'Configure at least one channel and then run `npm start` again.',
+        'If this is a fresh install, start with the WhatsApp or Telegram setup skill.',
+      ].join(' '),
+    );
     process.exit(1);
   }
 

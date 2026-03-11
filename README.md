@@ -80,6 +80,8 @@ Start NanoDex:
 npm start
 ```
 
+If NanoDex starts but reports that no channels are connected, that means the core runtime is healthy and you just have not configured WhatsApp, Telegram, Slack, or another channel yet.
+
 Prepare everything without launching the long-running service:
 
 PowerShell:

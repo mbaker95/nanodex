@@ -93,12 +93,26 @@ function ensureDependencies() {
 }
 
 function nativePackagesHealthy() {
-  const script = nativePackages
-    .map(
-      (pkg) =>
-        `try { require(${JSON.stringify(pkg)}); } catch (err) { console.error(${JSON.stringify(pkg)} + ': ' + err.message); process.exit(1); }`,
-    )
-    .join('\n');
+  const script = [
+    `try {
+      const Database = require('better-sqlite3');
+      const db = new Database(':memory:');
+      db.exec('SELECT 1');
+      db.close();
+    } catch (err) {
+      console.error('better-sqlite3: ' + err.message);
+      process.exit(1);
+    }`,
+    `try {
+      const keytar = require('keytar');
+      if (typeof keytar.getPassword !== 'function') {
+        throw new Error('getPassword is not available');
+      }
+    } catch (err) {
+      console.error('keytar: ' + err.message);
+      process.exit(1);
+    }`,
+  ].join('\n');
 
   return commandSucceeds(process.execPath, ['-e', script]);
 }

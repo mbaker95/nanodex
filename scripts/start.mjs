@@ -1,9 +1,7 @@
 import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import readline from 'readline/promises';
 import { fileURLToPath } from 'url';
-import { stdin as input, stdout as output } from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,33 +9,6 @@ const projectRoot = path.resolve(__dirname, '..');
 const imageName = 'nanodex-agent:latest';
 const prepareOnly = process.env.NANODEX_PREPARE_ONLY === '1';
 const nativePackages = ['better-sqlite3', 'keytar'];
-const channelSetupOptions = {
-  '1': {
-    name: 'WhatsApp',
-    remote: 'whatsapp',
-    repo: 'https://github.com/qwibitai/nanoclaw-whatsapp.git',
-  },
-  '2': {
-    name: 'Telegram',
-    remote: 'telegram',
-    repo: 'https://github.com/qwibitai/nanoclaw-telegram.git',
-  },
-  '3': {
-    name: 'Slack',
-    remote: 'slack',
-    repo: 'https://github.com/qwibitai/nanoclaw-slack.git',
-  },
-  '4': {
-    name: 'Discord',
-    remote: 'discord',
-    repo: 'https://github.com/qwibitai/nanoclaw-discord.git',
-  },
-  '5': {
-    name: 'Gmail',
-    remote: 'gmail',
-    repo: 'https://github.com/qwibitai/nanoclaw-gmail.git',
-  },
-};
 
 function resolveCommand(command) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -178,87 +149,6 @@ function buildApp() {
   run('npm', ['run', 'build']);
 }
 
-function detectInstalledChannels() {
-  const script = [
-    "await import('./dist/channels/index.js');",
-    "const { getRegisteredChannelNames } = await import('./dist/channels/registry.js');",
-    'console.log(JSON.stringify(getRegisteredChannelNames()));',
-  ].join('\n');
-
-  const result = spawnSync(
-    process.execPath,
-    ['--input-type=module', '-e', script],
-    {
-      cwd: projectRoot,
-      encoding: 'utf-8',
-    },
-  );
-
-  if (result.status !== 0) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(result.stdout.trim());
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function printChannelSetupInstructions(option) {
-  console.log('');
-  console.log(`NanoDex core is ready, but the ${option.name} channel is not installed yet.`);
-  console.log('Run these commands to add it, then start NanoDex again:');
-  console.log('');
-  console.log(`git remote add ${option.remote} ${option.repo}`);
-  console.log(`git fetch ${option.remote} main`);
-  console.log(`git merge ${option.remote}/main`);
-  console.log('npm start');
-  console.log('');
-}
-
-async function runFirstRunWizard() {
-  console.log('');
-  console.log('NanoDex core is installed, but this repo does not include a messaging channel yet.');
-  console.log('Original NanoClaw/NanoDex setup expected the setup agent to add a channel branch first.');
-  console.log('');
-  console.log('What do you want to set up?');
-  console.log('1. WhatsApp');
-  console.log('2. Telegram');
-  console.log('3. Slack');
-  console.log('4. Discord');
-  console.log('5. Gmail');
-  console.log('6. Exit');
-  console.log('');
-
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    printChannelSetupInstructions(channelSetupOptions['1']);
-    return;
-  }
-
-  const rl = readline.createInterface({ input, output });
-
-  try {
-    const answer = (await rl.question('Choose a channel [1-6]: ')).trim();
-
-    if (answer === '6' || answer === '') {
-      console.log('No channel selected.');
-      return;
-    }
-
-    const option = channelSetupOptions[answer];
-    if (!option) {
-      console.log('Unknown choice.');
-      return;
-    }
-
-    printChannelSetupInstructions(option);
-  } finally {
-    rl.close();
-  }
-}
-
 function buildDockerImage() {
   if (!commandSucceeds('docker', ['info'])) {
     console.error(
@@ -281,18 +171,11 @@ function startApp() {
   run(process.execPath, [path.join(projectRoot, 'dist', 'index.js')]);
 }
 
-async function main() {
+function main() {
   ensureEnvFile();
   ensureDependencies();
   ensureNativeDependencies();
   buildApp();
-
-  const installedChannels = detectInstalledChannels();
-  if (installedChannels?.length === 0) {
-    await runFirstRunWizard();
-    process.exit(1);
-  }
-
   buildDockerImage();
 
   if (prepareOnly) {
@@ -303,7 +186,4 @@ async function main() {
   startApp();
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+main();

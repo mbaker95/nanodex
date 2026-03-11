@@ -7,6 +7,8 @@ description: Set up NanoDex for first use. Use when the user wants dependencies 
 
 Run setup end to end from inside Codex. Treat this as the primary first-run experience. Only pause when the user must authenticate a messaging channel, choose between mutually exclusive options, or provide a secret/token that cannot be discovered locally.
 
+Keep the setup experience as faithful as possible to NanoClaw while adapting it to Codex-native tools and workflows.
+
 ## Goals
 
 1. Ensure the repo is on the user's fork.
@@ -25,6 +27,7 @@ Run setup end to end from inside Codex. Treat this as the primary first-run expe
 - Recommend WhatsApp first unless the user explicitly prefers Telegram, Slack, Discord, or another channel.
 - Do not tell the user to invoke repo skills manually. Use the relevant skill yourself.
 - Do not explain branch/remotes/merge mechanics unless something fails and the user needs context.
+- If a choice would make NanoDex feel less like NanoClaw in setup flow or operating model, treat that as the wrong direction unless there is a strong reason.
 - Prefer one clear question at a time in normal conversation. Do not use `AskUserQuestion` or Claude-specific UI concepts.
 
 ## Flow

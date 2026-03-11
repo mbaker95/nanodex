@@ -14,6 +14,8 @@ NanoDex is a Codex-native fork of NanoClaw. It is built for people who want a pe
 
 Each group runs with its own workspace, session state, instructions, and tools. Shared behavior lives in `AGENTS.md` and `.agents/skills`, while the host orchestrator stays small: routing, persistence, scheduling, and container lifecycle.
 
+The canonical philosophy lives in [PHILOSOPHY.md](PHILOSOPHY.md).
+
 ## Why NanoDex
 
 - Small enough to understand and safe to modify
@@ -47,6 +49,8 @@ That is the standard way to start NanoDex. On first launch, NanoDex prepares the
 **AI-native.** Setup, debugging, and customization should happen through Codex, not through hand-built wizards, dashboards, or sprawling control panels.
 
 **Skills over feature sprawl.** Core communication channels can be bundled when they are central to the product experience. Beyond that, new capabilities should still land as skills that transform a fork instead of bloating core.
+
+**Faithful to NanoClaw.** NanoDex should stay as close as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native tools and workflows.
 
 ## Requirements
 

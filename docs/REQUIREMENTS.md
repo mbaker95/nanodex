@@ -38,6 +38,10 @@ Setup, debugging, and customization should happen through Codex in the repo, not
 
 Core messaging paths can be bundled when they are central to first-run usability. Everything else should prefer repo skills that transform the fork directly instead of inflating the core runtime.
 
+### Faithful to NanoClaw
+
+NanoDex should stay as close as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native tools and workflows. The underlying agent stack can change. The character of the project should not.
+
 ---
 
 ## Product Shape

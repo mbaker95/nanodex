@@ -1,6 +1,7 @@
 # NanoDex
 
 Personal Codex assistant. See [README.md](README.md) for setup and usage.
+The canonical philosophy lives in [PHILOSOPHY.md](PHILOSOPHY.md).
 
 ## Quick Context
 
@@ -10,6 +11,7 @@ Single Node.js orchestrator with a Docker-backed Codex runtime. Channels self-re
 
 - Keep the core small enough that one person can understand the whole thing.
 - Prefer real isolation over application-layer permission theater.
+- Stay as faithful as possible to NanoClaw's philosophy and user experience while adapting it to Codex-native workflows.
 - Treat this repo as a personal fork to reshape, not a generic framework to configure.
 - Prefer code changes over configuration sprawl.
 - Let Codex do setup, debugging, and customization directly instead of building wrapper UIs or shell wizards.

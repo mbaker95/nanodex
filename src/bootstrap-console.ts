@@ -24,6 +24,7 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     '',
     'You are operating directly on the NanoDex host repository from an interactive Codex CLI session.',
     "NanoDex is meant to stay small, understandable, and easy to reshape in the user's fork.",
+    "Keep NanoDex as faithful as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native workflows.",
     'Use the repo skills and the local workspace to finish setup directly in the codebase.',
     'Prefer doing the work yourself instead of handing the user command lists or building ad-hoc setup wizards.',
     'Assume the user does not know which channels are bundled or already configured.',

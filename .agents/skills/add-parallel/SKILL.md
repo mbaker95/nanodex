@@ -1,3 +1,8 @@
+---
+name: add-parallel
+description: Add Parallel AI integration to NanoDex for quick web search and deeper research workflows.
+---
+
 # Add Parallel AI Integration
 
 Adds Parallel AI MCP integration to NanoDex for advanced web research capabilities.

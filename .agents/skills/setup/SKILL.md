@@ -23,5 +23,5 @@ Run setup end to end. Only pause when the user must authenticate a messaging cha
 - Use `npx tsx setup/index.ts --step container` to rebuild/test the image.
 - Use `npx tsx setup/index.ts --step register -- ...` to register groups.
 - Prefer fixing missing dependencies yourself instead of telling the user to do it.
-- Codex authentication is API-key based in this fork. Do not ask for Claude or Anthropic credentials.
+- Prefer the user's local Codex login when available. Fall back to `OPENAI_API_KEY` or `CODEX_API_KEY` only when needed.
 - If the repo is still pointing at upstream only, help the user create or attach their own GitHub fork before finishing.

@@ -150,6 +150,17 @@ function detectContainerRuntime(): string {
 }
 
 function detectCredentials(projectRoot: string): string {
+  const hostAuthFile = process.env.CODEX_AUTH_FILE ||
+    process.env.CODEX_HOME ||
+    path.join(os.homedir(), '.codex');
+  const authFilePath = hostAuthFile.endsWith('auth.json')
+    ? hostAuthFile
+    : path.join(hostAuthFile, 'auth.json');
+
+  if (fs.existsSync(authFilePath)) {
+    return 'configured';
+  }
+
   const envFile = path.join(projectRoot, '.env');
   if (!fs.existsSync(envFile)) {
     return 'missing';

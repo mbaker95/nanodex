@@ -50,6 +50,13 @@ vi.mock('./mount-security.js', () => ({
   validateAdditionalMounts: vi.fn(() => []),
 }));
 
+vi.mock('./codex-runtime-env.js', () => ({
+  loadCodexRuntimeEnv: vi.fn(() => ({
+    authMode: 'api_key',
+    apiKey: 'sk-test',
+  })),
+}));
+
 // Create a controllable fake ChildProcess
 function createFakeProcess() {
   const proc = new EventEmitter() as EventEmitter & {

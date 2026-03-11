@@ -24,7 +24,9 @@ cd nanodex
 cp .env.example .env
 ```
 
-Set one of these in `.env`:
+By default NanoDex prefers your local Codex login. If you have already run `codex` on the host and signed in with ChatGPT, NanoDex will reuse that login automatically from `~/.codex/auth.json`.
+
+API keys are the fallback. Set one of these in `.env` only if you do not want login-based auth or do not have a host login available:
 
 ```bash
 OPENAI_API_KEY=your_key_here
@@ -115,9 +117,10 @@ This is a best-effort port of NanoClaw's agent-swarm story. Codex supports nativ
 
 - Node.js 20+
 - Docker
-- An OpenAI/Codex API key
+- A Codex host login or an OpenAI/Codex API key fallback
 
 ## Notes
 
 - Host config paths still use `~/.config/nanoclaw` for compatibility with existing installs.
+- Host Codex login defaults to `~/.codex/auth.json`. You can override that with `CODEX_AUTH_FILE`.
 - Legacy `CLAUDE.md` and `.claude` files can coexist during migration, but NanoDex prefers `AGENTS.md` and `.agents`.

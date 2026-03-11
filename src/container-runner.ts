@@ -14,7 +14,7 @@ import {
   IDLE_TIMEOUT,
   TIMEZONE,
 } from './config.js';
-import { loadCodexRuntimeEnv } from './codex-runtime-env.js';
+import { CodexRuntimeEnv, loadCodexRuntimeEnv } from './codex-runtime-env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
 import {
@@ -66,6 +66,7 @@ function resolveAgentsFile(baseDir: string): string | null {
 function buildVolumeMounts(
   group: RegisteredGroup,
   isMain: boolean,
+  runtimeEnv: CodexRuntimeEnv,
 ): VolumeMount[] {
   const mounts: VolumeMount[] = [];
   const projectRoot = process.cwd();
@@ -130,6 +131,14 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  if (runtimeEnv.authMode === 'login' && runtimeEnv.authFilePath) {
+    mounts.push({
+      hostPath: runtimeEnv.authFilePath,
+      containerPath: '/home/node/.codex/auth.json',
+      readonly: false,
+    });
+  }
+
   const groupIpcDir = resolveGroupIpcPath(group.folder);
   fs.mkdirSync(path.join(groupIpcDir, 'messages'), { recursive: true });
   fs.mkdirSync(path.join(groupIpcDir, 'tasks'), { recursive: true });
@@ -171,17 +180,20 @@ function buildVolumeMounts(
 function buildContainerArgs(
   mounts: VolumeMount[],
   containerName: string,
+  runtimeEnv: CodexRuntimeEnv,
 ): string[] {
   const args: string[] = ['run', '-i', '--rm', '--name', containerName];
-  const runtimeEnv = loadCodexRuntimeEnv();
 
   args.push('-e', `TZ=${TIMEZONE}`);
-  args.push('-e', `CODEX_API_KEY=${runtimeEnv.apiKey}`);
-  args.push('-e', `OPENAI_API_KEY=${runtimeEnv.apiKey}`);
   args.push('-e', 'CODEX_HOME=/home/node/.codex');
   args.push('-e', 'CODEX_DISABLE_TELEMETRY=1');
 
-  if (runtimeEnv.baseUrl) {
+  if (runtimeEnv.authMode === 'api_key' && runtimeEnv.apiKey) {
+    args.push('-e', `CODEX_API_KEY=${runtimeEnv.apiKey}`);
+    args.push('-e', `OPENAI_API_KEY=${runtimeEnv.apiKey}`);
+  }
+
+  if (runtimeEnv.authMode === 'api_key' && runtimeEnv.baseUrl) {
     args.push('-e', `OPENAI_BASE_URL=${runtimeEnv.baseUrl}`);
   }
   if (runtimeEnv.model) {
@@ -220,10 +232,11 @@ export async function runContainerAgent(
   const groupDir = resolveGroupFolderPath(group.folder);
   fs.mkdirSync(groupDir, { recursive: true });
 
-  const mounts = buildVolumeMounts(group, input.isMain);
+  const runtimeEnv = loadCodexRuntimeEnv();
+  const mounts = buildVolumeMounts(group, input.isMain, runtimeEnv);
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `nanodex-${safeName}-${Date.now()}`;
-  const containerArgs = buildContainerArgs(mounts, containerName);
+  const containerArgs = buildContainerArgs(mounts, containerName, runtimeEnv);
 
   logger.debug(
     {
@@ -233,6 +246,7 @@ export async function runContainerAgent(
         (mount) =>
           `${mount.hostPath} -> ${mount.containerPath}${mount.readonly ? ' (ro)' : ''}`,
       ),
+      authMode: runtimeEnv.authMode,
       containerArgs: containerArgs.join(' '),
     },
     'Container mount configuration',

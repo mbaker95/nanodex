@@ -115,14 +115,8 @@ function waitForIpcMessage(): Promise<string | null> {
   });
 }
 
-function getCodexApiKey(): string {
-  const apiKey = process.env.CODEX_API_KEY || process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      'Missing CODEX_API_KEY or OPENAI_API_KEY inside the container',
-    );
-  }
-  return apiKey;
+function getCodexApiKey(): string | undefined {
+  return process.env.CODEX_API_KEY || process.env.OPENAI_API_KEY;
 }
 
 function getThreadOptions(containerInput: ContainerInput): ThreadOptions {
@@ -160,9 +154,10 @@ function createCodexClient(
   containerInput: ContainerInput,
   mcpServerPath: string,
 ): Codex {
+  const apiKey = getCodexApiKey();
   return new Codex({
-    apiKey: getCodexApiKey(),
-    baseUrl: process.env.OPENAI_BASE_URL,
+    ...(apiKey ? { apiKey } : {}),
+    ...(process.env.OPENAI_BASE_URL ? { baseUrl: process.env.OPENAI_BASE_URL } : {}),
     config: {
       features: {
         collab: true,

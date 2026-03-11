@@ -14,14 +14,14 @@ Run setup end to end from inside Codex. Treat this as the primary first-run expe
 3. Ensure Docker is installed and running.
 4. Build the `nanodex-agent:latest` image with `./container/build.sh`.
 5. Ensure Codex authentication works, preferring the user's local Codex login and falling back to `OPENAI_API_KEY` or `CODEX_API_KEY` only when needed.
-6. Install and configure the user's first channel directly in the repo when it is missing.
+6. Configure the user's first bundled channel.
 7. Register the user's main group if it is not already registered.
 8. Start or restart the background service.
 
 ## User Experience Rules
 
 - The user should not need to know what NanoDex bundles by default.
-- If no channel modules are installed, say that plainly and offer to install one now.
+- If no channel is configured yet, say that plainly and offer to configure one now.
 - Recommend WhatsApp first unless the user explicitly prefers Telegram, Slack, Discord, or another channel.
 - Do not tell the user to invoke repo skills manually. Use the relevant skill yourself.
 - Do not explain branch/remotes/merge mechanics unless something fails and the user needs context.
@@ -33,9 +33,9 @@ Run setup end to end from inside Codex. Treat this as the primary first-run expe
 2. Repair dependencies and native modules if needed.
 3. Verify Codex auth.
 4. Ensure Docker is running and the container image builds.
-5. Determine whether any channels are already installed and connected.
-6. If no channel is installed, recommend WhatsApp and then invoke the matching channel skill yourself.
-7. If a channel is installed but not configured, finish its auth/registration instead of talking abstractly about setup.
+5. Determine whether any bundled channels are already configured and connected.
+6. If no channel is configured, recommend WhatsApp and then invoke the matching channel skill yourself.
+7. If a channel is bundled but not configured, finish its auth/registration instead of talking abstractly about setup.
 8. Once a main group exists, verify the service/runtime and tell the user the next concrete message to send.
 
 ## Notes

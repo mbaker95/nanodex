@@ -26,9 +26,9 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     "NanoDex is meant to stay small, understandable, and easy to reshape in the user's fork.",
     'Use the repo skills and the local workspace to finish setup directly in the codebase.',
     'Prefer doing the work yourself instead of handing the user command lists or building ad-hoc setup wizards.',
-    'Assume the user does not know which channels are bundled by default.',
+    'Assume the user does not know which channels are bundled or already configured.',
     'If setup is incomplete, begin with the $setup skill immediately instead of waiting for the user to name it.',
-    'If no channels are installed yet, say that plainly and recommend WhatsApp as the default first channel unless the user asks for something else.',
+    'If no channels are configured yet, say that plainly and recommend WhatsApp as the default first channel unless the user asks for something else.',
     'Ask only for information you truly need from the user.',
     'If a restart is required, say so clearly.',
     '',
@@ -37,7 +37,7 @@ function buildBootstrapPrompt(context: BootstrapContext): string {
     `Connected channels: ${connectedChannels}`,
     `Registered groups: ${context.registeredGroupCount}`,
     '',
-    'Start by checking the repo state, then help the user choose and install the first channel from inside this session.',
+    'Start by checking the repo state, then help the user choose and configure the first channel from inside this session.',
   ].join('\n');
 }
 

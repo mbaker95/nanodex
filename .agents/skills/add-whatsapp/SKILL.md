@@ -7,11 +7,10 @@ description: Add WhatsApp as a channel. Can replace other channels entirely or r
 
 Use this skill when the user wants WhatsApp, or when first-run setup needs a recommended default channel.
 
-The expected experience is simple:
-1. install the WhatsApp channel code into the user's fork
-2. authenticate WhatsApp
-3. register the main chat
-4. verify NanoDex can respond
+WhatsApp is bundled in NanoDex core. The expected experience is:
+1. authenticate WhatsApp
+2. register the main chat
+3. verify NanoDex can respond
 
 Do the work yourself. Only stop when the user must scan a QR code, enter a pairing code, choose between real options, or confirm a phone/chat choice.
 
@@ -25,39 +24,14 @@ Do the work yourself. Only stop when the user must scan a QR code, enter a pairi
 
 ## Phase 1: Pre-flight
 
-1. Check whether WhatsApp code is already present by looking for `src/channels/whatsapp.ts`.
+1. Confirm the bundled WhatsApp files exist:
+   - `src/channels/whatsapp.ts`
+   - `src/whatsapp-auth.ts`
+   - `setup/whatsapp-auth.ts`
 2. Check whether WhatsApp auth already exists by looking for `store/auth/creds.json`.
-3. If the code is missing, install it in Phase 2.
-4. If the code exists but auth is missing, skip to Phase 3.
-5. If auth exists but registration is missing, skip to Phase 4.
+3. If auth exists but registration is missing, skip to Phase 3.
 
-## Phase 2: Install the Channel Code
-
-Install the WhatsApp channel into the fork. Prefer doing the git work directly:
-
-1. Ensure a `whatsapp` remote exists:
-   - `https://github.com/qwibitai/nanoclaw-whatsapp.git`
-2. Fetch that remote.
-3. Merge the relevant branch into the current fork.
-4. Resolve conflicts yourself if needed.
-
-The expected code changes include:
-- `src/channels/whatsapp.ts`
-- `src/channels/whatsapp.test.ts`
-- `src/whatsapp-auth.ts`
-- `setup/whatsapp-auth.ts`
-- the WhatsApp import added to `src/channels/index.ts`
-- the `whatsapp-auth` setup step added to `setup/index.ts`
-- required npm dependencies
-
-After merging:
-1. run `npm install`
-2. run `npm run build`
-3. run the WhatsApp channel tests if present
-
-Do not continue to auth until the build is clean.
-
-## Phase 3: Authenticate WhatsApp
+## Phase 2: Authenticate WhatsApp
 
 If authentication is needed, ask the user which method they want:
 - QR code in browser
@@ -81,7 +55,7 @@ Only pause for the user actions that must happen on their phone:
 
 When auth finishes, verify `store/auth/creds.json` exists.
 
-## Phase 4: Register the Main Chat
+## Phase 3: Register the Main Chat
 
 Once auth exists, guide the user through choosing where NanoDex should live:
 - self-chat
@@ -110,7 +84,7 @@ For the main chat:
 - mark it as main
 - disable trigger requirement when appropriate
 
-## Phase 5: Verify
+## Phase 4: Verify
 
 After registration:
 1. run `npm run build` if code or env changed

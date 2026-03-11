@@ -19,6 +19,7 @@ Each group runs with its own workspace, session state, instructions, and tools. 
 - Small enough to understand and safe to modify
 - True isolation through per-group Docker workspaces
 - Built for a personal fork, not a generic framework
+- Bundled channels for WhatsApp, Telegram, Slack, and Discord
 - Codex-native setup, debugging, and customization
 - Shared and per-group memory through `AGENTS.md`
 - Repo-local skills that add capabilities without bloating core
@@ -45,13 +46,24 @@ That is the standard way to start NanoDex. On first launch, NanoDex prepares the
 
 **AI-native.** Setup, debugging, and customization should happen through Codex, not through hand-built wizards, dashboards, or sprawling control panels.
 
-**Skills over features.** New capabilities should land as skills that transform a fork, not as more default behavior in core.
+**Skills over feature sprawl.** Core communication channels can be bundled when they are central to the product experience. Beyond that, new capabilities should still land as skills that transform a fork instead of bloating core.
 
 ## Requirements
 
 - Node.js 20 or newer
 - Docker running locally
 - a local Codex login, or an `OPENAI_API_KEY` / `CODEX_API_KEY`
+
+## Bundled Channels
+
+NanoDex now ships with built-in channel support for:
+
+- WhatsApp
+- Telegram
+- Slack
+- Discord
+
+On first run, Codex should help you choose one of those channels and finish auth plus registration from the same `npm start` flow.
 
 ## Authentication
 

@@ -7,11 +7,10 @@ description: Add Telegram as a channel. Can replace WhatsApp entirely or run alo
 
 Use this skill when the user wants Telegram as a primary or additional channel.
 
-The expected experience is simple:
-1. install the Telegram channel code into the user's fork
-2. collect or create the bot token
-3. register the main Telegram chat
-4. verify NanoDex can respond
+Telegram is bundled in NanoDex core. The expected experience is:
+1. collect or create the bot token
+2. register the main Telegram chat
+3. verify NanoDex can respond
 
 Do the work yourself. Only stop when the user must create a bot, paste a token, choose a chat, or perform a Telegram-side action such as disabling privacy mode.
 
@@ -25,37 +24,11 @@ Do the work yourself. Only stop when the user must create a bot, paste a token, 
 
 ## Phase 1: Pre-flight
 
-1. Check whether `src/channels/telegram.ts` already exists.
+1. Confirm the bundled Telegram file exists: `src/channels/telegram.ts`.
 2. Check whether `TELEGRAM_BOT_TOKEN` is already configured.
-3. If code is missing, install it in Phase 2.
-4. If code exists but token is missing, skip to Phase 3.
-5. If token exists but registration is missing, skip to Phase 4.
+3. If token exists but registration is missing, skip to Phase 3.
 
-## Phase 2: Install the Channel Code
-
-Install the Telegram channel into the fork. Prefer doing the git work directly:
-
-1. Ensure a `telegram` remote exists:
-   - `https://github.com/qwibitai/nanoclaw-telegram.git`
-2. Fetch that remote.
-3. Merge the relevant branch into the current fork.
-4. Resolve conflicts yourself if needed.
-
-The expected code changes include:
-- `src/channels/telegram.ts`
-- `src/channels/telegram.test.ts`
-- the Telegram import added to `src/channels/index.ts`
-- required npm dependencies
-- `TELEGRAM_BOT_TOKEN` in `.env.example`
-
-After merging:
-1. run `npm install`
-2. run `npm run build`
-3. run the Telegram channel tests if present
-
-Do not continue until the build is clean.
-
-## Phase 3: Configure Telegram Auth
+## Phase 2: Configure Telegram Auth
 
 Ask the user whether they already have a Telegram bot token.
 
@@ -73,7 +46,7 @@ Once the token is available:
 
 For group chats, tell the user they may need to disable privacy mode in `@BotFather` so the bot can see normal messages, not only commands and mentions.
 
-## Phase 4: Register the Main Chat
+## Phase 3: Register the Main Chat
 
 Ask where the user wants to talk to NanoDex:
 - direct message with the bot
@@ -88,7 +61,7 @@ Use `npx tsx setup/index.ts --step register ...` to register:
 
 Choose a sensible default folder name such as `telegram_main` for the main chat.
 
-## Phase 5: Verify
+## Phase 4: Verify
 
 After registration:
 1. run `npm run build` if code or env changed

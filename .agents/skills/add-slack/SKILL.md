@@ -7,11 +7,10 @@ description: Add Slack as a channel. Can replace WhatsApp entirely or run alongs
 
 Use this skill when the user wants Slack as a primary or additional channel.
 
-The expected experience is simple:
-1. install the Slack channel code into the user's fork
-2. collect or create the Slack app tokens
-3. register the main Slack channel
-4. verify NanoDex can respond
+Slack is bundled in NanoDex core. The expected experience is:
+1. collect or create the Slack app tokens
+2. register the main Slack channel
+3. verify NanoDex can respond
 
 Do the work yourself. Only stop when the user must create the Slack app, paste tokens, choose a channel, or perform a Slack-side action.
 
@@ -25,37 +24,11 @@ Do the work yourself. Only stop when the user must create the Slack app, paste t
 
 ## Phase 1: Pre-flight
 
-1. Check whether `src/channels/slack.ts` already exists.
+1. Confirm the bundled Slack file exists: `src/channels/slack.ts`.
 2. Check whether `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN` are already configured.
-3. If code is missing, install it in Phase 2.
-4. If code exists but tokens are missing, skip to Phase 3.
-5. If tokens exist but registration is missing, skip to Phase 4.
+3. If tokens exist but registration is missing, skip to Phase 3.
 
-## Phase 2: Install the Channel Code
-
-Install the Slack channel into the fork. Prefer doing the git work directly:
-
-1. Ensure a `slack` remote exists:
-   - `https://github.com/qwibitai/nanoclaw-slack.git`
-2. Fetch that remote.
-3. Merge the relevant branch into the current fork.
-4. Resolve conflicts yourself if needed.
-
-The expected code changes include:
-- `src/channels/slack.ts`
-- `src/channels/slack.test.ts`
-- the Slack import added to `src/channels/index.ts`
-- required npm dependencies
-- `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN` in `.env.example`
-
-After merging:
-1. run `npm install`
-2. run `npm run build`
-3. run the Slack channel tests if present
-
-Do not continue until the build is clean.
-
-## Phase 3: Configure Slack Auth
+## Phase 2: Configure Slack Auth
 
 Ask the user whether they already have a Slack app with:
 - a Bot Token (`xoxb-...`)
@@ -75,7 +48,7 @@ Once the tokens are available:
 1. write them to `.env`
 2. sync the runtime env if needed
 
-## Phase 4: Register the Main Channel
+## Phase 3: Register the Main Channel
 
 Ask where the user wants to talk to NanoDex:
 - a main Slack channel
@@ -88,7 +61,7 @@ Register the chosen channel with `npx tsx setup/index.ts --step register ...`
 
 Use a sensible default folder name such as `slack_main` for the main channel.
 
-## Phase 5: Verify
+## Phase 4: Verify
 
 After registration:
 1. run `npm run build` if code or env changed

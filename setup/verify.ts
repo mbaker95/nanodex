@@ -13,7 +13,7 @@ import { STORE_DIR } from '../src/config.js';
 import { loadCodexRuntimeEnv } from '../src/codex-runtime-env.js';
 import { readEnvFile } from '../src/env.js';
 import { logger } from '../src/logger.js';
-import { getServiceManager, isRoot } from './platform.js';
+import { commandExists, getServiceManager, isRoot } from './platform.js';
 import { emitStatus } from './status.js';
 
 const SERVICE_NAME = 'nanodex';
@@ -137,16 +137,15 @@ function detectNohupStatus(projectRoot: string): string {
 }
 
 function detectContainerRuntime(): string {
-  try {
-    execSync('command -v container', { stdio: 'ignore' });
+  if (commandExists('container')) {
     return 'apple-container';
+  }
+
+  try {
+    execSync('docker info', { stdio: 'ignore' });
+    return 'docker';
   } catch {
-    try {
-      execSync('docker info', { stdio: 'ignore' });
-      return 'docker';
-    } catch {
-      return 'none';
-    }
+    return 'none';
   }
 }
 

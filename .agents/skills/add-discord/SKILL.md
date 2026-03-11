@@ -7,11 +7,10 @@ description: Add Discord bot channel integration to NanoDex.
 
 Use this skill when the user wants Discord as a primary or additional channel.
 
-The expected experience is simple:
-1. install the Discord channel code into the user's fork
-2. collect or create the Discord bot token
-3. register the main Discord channel
-4. verify NanoDex can respond
+Discord is bundled in NanoDex core. The expected experience is:
+1. collect or create the Discord bot token
+2. register the main Discord channel
+3. verify NanoDex can respond
 
 Do the work yourself. Only stop when the user must create the Discord bot, paste a token, choose a channel, or perform a Discord-side action.
 
@@ -25,37 +24,11 @@ Do the work yourself. Only stop when the user must create the Discord bot, paste
 
 ## Phase 1: Pre-flight
 
-1. Check whether `src/channels/discord.ts` already exists.
+1. Confirm the bundled Discord file exists: `src/channels/discord.ts`.
 2. Check whether `DISCORD_BOT_TOKEN` is already configured.
-3. If code is missing, install it in Phase 2.
-4. If code exists but token is missing, skip to Phase 3.
-5. If token exists but registration is missing, skip to Phase 4.
+3. If token exists but registration is missing, skip to Phase 3.
 
-## Phase 2: Install the Channel Code
-
-Install the Discord channel into the fork. Prefer doing the git work directly:
-
-1. Ensure a `discord` remote exists:
-   - `https://github.com/qwibitai/nanoclaw-discord.git`
-2. Fetch that remote.
-3. Merge the relevant branch into the current fork.
-4. Resolve conflicts yourself if needed.
-
-The expected code changes include:
-- `src/channels/discord.ts`
-- `src/channels/discord.test.ts`
-- the Discord import added to `src/channels/index.ts`
-- required npm dependencies
-- `DISCORD_BOT_TOKEN` in `.env.example`
-
-After merging:
-1. run `npm install`
-2. run `npm run build`
-3. run the Discord channel tests if present
-
-Do not continue until the build is clean.
-
-## Phase 3: Configure Discord Auth
+## Phase 2: Configure Discord Auth
 
 Ask the user whether they already have a Discord bot token.
 
@@ -72,7 +45,7 @@ Once the token is available:
 1. write it to `.env`
 2. sync the runtime env if needed
 
-## Phase 4: Register the Main Channel
+## Phase 3: Register the Main Channel
 
 Ask where the user wants to talk to NanoDex:
 - a main Discord text channel
@@ -87,7 +60,7 @@ Register the chosen channel with `npx tsx setup/index.ts --step register ...`
 
 Use a sensible default folder name such as `discord_main` for the main channel.
 
-## Phase 5: Verify
+## Phase 4: Verify
 
 After registration:
 1. run `npm run build` if code or env changed

@@ -33,9 +33,10 @@ On first run, `npm start` will automatically:
 
 1. create `.env` from `.env.example` if it is missing
 2. install dependencies if `node_modules` is missing
-3. build the TypeScript app
-4. build or refresh the Docker image
-5. start NanoDex
+3. repair native Node modules if your local install is stale or incomplete
+4. build the TypeScript app
+5. build or refresh the Docker image
+6. start NanoDex
 
 You do not need to manually run `cp .env.example .env`.
 

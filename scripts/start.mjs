@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const imageName = 'nanodex-agent:latest';
 const prepareOnly = process.env.NANODEX_PREPARE_ONLY === '1';
+const nativePackages = ['better-sqlite3', 'keytar'];
 
 function resolveCommand(command) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -91,6 +92,44 @@ function ensureDependencies() {
   run('npm', ['install']);
 }
 
+function nativePackagesHealthy() {
+  const script = nativePackages
+    .map(
+      (pkg) =>
+        `try { require(${JSON.stringify(pkg)}); } catch (err) { console.error(${JSON.stringify(pkg)} + ': ' + err.message); process.exit(1); }`,
+    )
+    .join('\n');
+
+  return commandSucceeds(process.execPath, ['-e', script]);
+}
+
+function ensureNativeDependencies() {
+  if (nativePackagesHealthy()) {
+    return;
+  }
+
+  console.log('Repairing native dependencies...');
+  run('npm', ['rebuild', ...nativePackages]);
+
+  if (nativePackagesHealthy()) {
+    return;
+  }
+
+  console.log('Reinstalling dependencies to restore native modules...');
+  run('npm', ['install']);
+
+  if (!nativePackagesHealthy()) {
+    console.error(
+      [
+        'NanoDex could not load its native Node dependencies.',
+        'Tried rebuilding and reinstalling `better-sqlite3` and `keytar`.',
+        'Check your local Node.js toolchain, then run `npm start` again.',
+      ].join('\n'),
+    );
+    process.exit(1);
+  }
+}
+
 function buildApp() {
   console.log('Building NanoDex...');
   run('npm', ['run', 'build']);
@@ -121,6 +160,7 @@ function startApp() {
 function main() {
   ensureEnvFile();
   ensureDependencies();
+  ensureNativeDependencies();
   buildApp();
   buildDockerImage();
 

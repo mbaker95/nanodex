@@ -9,6 +9,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const imageName = 'nanodex-agent:latest';
 const prepareOnly = process.env.NANODEX_PREPARE_ONLY === '1';
 const nativePackages = ['better-sqlite3', 'keytar'];
+const bootstrapRestartExitCode = 85;
 
 function resolveCommand(command) {
   if (process.platform === 'win32' && command === 'npm') {
@@ -49,6 +50,29 @@ function run(command, args, options = {}) {
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
+}
+
+function runStatus(command, args, options = {}) {
+  const resolvedCommand = resolveCommand(command);
+  const useShell = process.platform === 'win32' && resolvedCommand.endsWith('.cmd');
+  const result = spawnSync(
+    useShell
+      ? [resolvedCommand, ...args].map(quoteShellArg).join(' ')
+      : resolvedCommand,
+    useShell ? [] : args,
+    {
+      cwd: projectRoot,
+      stdio: 'inherit',
+      shell: useShell,
+      ...options,
+    },
+  );
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  return result.status ?? 1;
 }
 
 function commandSucceeds(command, args, options = {}) {
@@ -167,8 +191,16 @@ function buildDockerImage() {
 }
 
 function startApp() {
-  console.log('Starting NanoDex...');
-  run(process.execPath, [path.join(projectRoot, 'dist', 'index.js')]);
+  while (true) {
+    console.log('Starting NanoDex...');
+    const status = runStatus(process.execPath, [path.join(projectRoot, 'dist', 'index.js')]);
+    if (status !== bootstrapRestartExitCode) {
+      process.exit(status);
+    }
+
+    console.log('NanoDex setup changed runtime state. Rebuilding and restarting...');
+    buildApp();
+  }
 }
 
 function main() {

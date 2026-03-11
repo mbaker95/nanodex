@@ -31,7 +31,7 @@ cd nanodex
 npm start
 ```
 
-That is the standard way to start NanoDex. On first launch, NanoDex prepares the local environment and hands setup to Codex in your terminal.
+That is the standard way to start NanoDex. On first launch, NanoDex prepares the local environment, hands setup to Codex in your terminal, and restarts itself automatically when setup changes the repo or runtime state.
 
 ## Philosophy
 

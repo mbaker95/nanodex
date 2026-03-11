@@ -48,4 +48,4 @@ Run setup end to end from inside Codex. Treat this as the primary first-run expe
 - If the repo is still pointing at upstream only, help the user create or attach their own GitHub fork before finishing.
 - Do not turn setup into a shell wizard. The point of NanoDex is that the agent performs setup and reshapes the fork directly.
 - On Windows or PowerShell hosts, prefer cross-platform commands or direct file edits over bash-only snippets.
-- If setup completes but the running process must be restarted to load new code, say that explicitly and stop there.
+- When bootstrap changes the repo or runtime state, the outer `npm start` flow will rebuild and restart automatically. Tell the user that is happening when relevant.

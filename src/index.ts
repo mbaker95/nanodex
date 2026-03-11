@@ -58,6 +58,8 @@ import { logger } from './logger.js';
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
 
+const BOOTSTRAP_RESTART_EXIT_CODE = 85;
+
 let lastTimestamp = '';
 let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
@@ -465,16 +467,71 @@ function ensureContainerSystemRunning(): void {
   cleanupOrphans();
 }
 
+interface BootstrapFingerprint {
+  channelModuleFiles: string[];
+  envMtimeMs: number | null;
+  runtimeEnvMtimeMs: number | null;
+  whatsappAuthMtimeMs: number | null;
+  registeredGroupCount: number;
+}
+
+function getFileMtimeMs(filePath: string): number | null {
+  try {
+    return fs.statSync(filePath).mtimeMs;
+  } catch {
+    return null;
+  }
+}
+
+function getChannelModuleFiles(): string[] {
+  const channelsDir = path.join(process.cwd(), 'src', 'channels');
+  try {
+    return fs
+      .readdirSync(channelsDir)
+      .filter(
+        (file) =>
+          file.endsWith('.ts') &&
+          file !== 'index.ts' &&
+          file !== 'registry.ts' &&
+          file !== 'registry.test.ts',
+      )
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
+function getBootstrapFingerprint(): BootstrapFingerprint {
+  return {
+    channelModuleFiles: getChannelModuleFiles(),
+    envMtimeMs: getFileMtimeMs(path.join(process.cwd(), '.env')),
+    runtimeEnvMtimeMs: getFileMtimeMs(
+      path.join(process.cwd(), 'data', 'env', 'env'),
+    ),
+    whatsappAuthMtimeMs: getFileMtimeMs(
+      path.join(process.cwd(), 'store', 'auth', 'creds.json'),
+    ),
+    registeredGroupCount: Object.keys(getAllRegisteredGroups()).length,
+  };
+}
+
+function bootstrapChangedState(
+  before: BootstrapFingerprint,
+  after: BootstrapFingerprint,
+): boolean {
+  return JSON.stringify(before) !== JSON.stringify(after);
+}
+
 async function maybeRunBootstrapConsole(
   installedChannels: string[],
   connectedChannels: Channel[],
-): Promise<boolean> {
+): Promise<'skip' | 'completed' | 'restart'> {
   const registeredGroupCount = Object.keys(registeredGroups).length;
   const needsBootstrap =
     connectedChannels.length === 0 || registeredGroupCount === 0;
 
   if (!needsBootstrap) {
-    return false;
+    return 'skip';
   }
 
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -489,13 +546,20 @@ async function maybeRunBootstrapConsole(
     process.exit(1);
   }
 
+  const before = getBootstrapFingerprint();
   await runBootstrapConsole({
     installedChannels,
     connectedChannels: connectedChannels.map((channel) => channel.name),
     registeredGroupCount,
     assistantName: ASSISTANT_NAME,
   });
-  return true;
+
+  const after = getBootstrapFingerprint();
+  if (bootstrapChangedState(before, after)) {
+    return 'restart';
+  }
+
+  return 'completed';
 }
 
 async function main(): Promise<void> {
@@ -563,9 +627,19 @@ async function main(): Promise<void> {
     await channel.connect();
   }
 
-  if (await maybeRunBootstrapConsole(installedChannels, channels)) {
+  const bootstrapResult = await maybeRunBootstrapConsole(
+    installedChannels,
+    channels,
+  );
+  if (bootstrapResult !== 'skip') {
     for (const channel of channels) {
       await channel.disconnect();
+    }
+    if (bootstrapResult === 'restart') {
+      logger.info(
+        'Bootstrap changed NanoDex state. Restarting to load the updated setup.',
+      );
+      process.exit(BOOTSTRAP_RESTART_EXIT_CODE);
     }
     return;
   }

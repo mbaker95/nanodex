@@ -25,10 +25,13 @@ Keep the setup experience as faithful as possible to NanoClaw while adapting it 
 - The user should not need to know what NanoDex bundles by default.
 - If no channel is configured yet, say that plainly and offer to configure one now.
 - Recommend WhatsApp first as the canonical NanoClaw-style path unless the user explicitly prefers Telegram, Slack, Discord, or another channel.
+- Once the user explicitly chooses a non-WhatsApp channel, stop trying to steer them back to WhatsApp and finish the chosen path.
 - Do not tell the user to invoke repo skills manually. Use the relevant skill yourself.
 - Do not explain branch/remotes/merge mechanics unless something fails and the user needs context.
 - If a choice would make NanoDex feel less like NanoClaw in setup flow or operating model, treat that as the wrong direction unless there is a strong reason.
 - Prefer one clear question at a time in normal conversation. Do not use `AskUserQuestion` or Claude-specific UI concepts.
+- Bootstrap is for completing the user's local setup state, not for doing a broad codebase review. Prefer `.env`, host env vars, `store/`, `groups/`, `data/`, registration, and service/runtime state over tracked source changes.
+- Treat tracked code changes as a setup fix only when you discover a real bug. Do not casually mix public repo development work into a private first-run setup flow.
 
 ## Flow
 
@@ -52,3 +55,4 @@ Keep the setup experience as faithful as possible to NanoClaw while adapting it 
 - Do not turn setup into a shell wizard. The point of NanoDex is that the agent performs setup and reshapes the fork directly.
 - On Windows or PowerShell hosts, prefer cross-platform commands or direct file edits over bash-only snippets.
 - When bootstrap changes the repo or runtime state, the outer `npm start` flow will rebuild and restart automatically. Tell the user that is happening when relevant.
+- If a bundled channel already exists in `src/channels`, assume installation is not the main task unless runtime evidence shows the bundle is actually broken.

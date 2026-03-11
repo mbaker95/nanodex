@@ -21,12 +21,17 @@ Do the work yourself. Only stop when the user must create a bot, paste a token, 
 - Prefer one clear question at a time in normal conversation. Do not use `AskUserQuestion`.
 - If the user does not already have a bot token, walk them through `@BotFather` plainly and wait for the token.
 - On Windows or PowerShell hosts, prefer cross-platform commands or direct file edits over bash-only snippets.
+- Telegram is bundled. Treat this as a local setup and registration task unless you find a real Telegram runtime bug.
+- Do not perform a broad code review before doing the obvious setup work.
+- Prefer local/private state changes first: `.env`, host env, bot verification, chat registration, restart, and live response testing.
+- If the user picked Telegram, stay on Telegram. Do not redirect the conversation back toward WhatsApp unless the user changes their mind.
 
 ## Phase 1: Pre-flight
 
 1. Confirm the bundled Telegram file exists: `src/channels/telegram.ts`.
 2. Check whether `TELEGRAM_BOT_TOKEN` is already configured.
 3. If token exists but registration is missing, skip to Phase 3.
+4. Keep file inspection minimal. Once the bundle exists and the env path is known, move on to actual setup.
 
 ## Phase 2: Configure Telegram Auth
 
@@ -43,6 +48,7 @@ Once the token is available:
 1. write it to `.env`
 2. sync the runtime env if needed
 3. explain Telegram privacy mode for group chats
+4. verify the token with a live Telegram API call before moving on
 
 For group chats, tell the user they may need to disable privacy mode in `@BotFather` so the bot can see normal messages, not only commands and mentions.
 

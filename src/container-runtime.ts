@@ -60,7 +60,7 @@ export function ensureContainerRuntimeRunning(): void {
   }
 }
 
-/** Kill orphaned NanoClaw/NanoDex containers from previous runs. */
+/** Kill orphaned NanoDex containers, including legacy NanoClaw names from older installs. */
 export function cleanupOrphans(): void {
   try {
     const output = execSync(`${CONTAINER_RUNTIME_BIN} ps --format '{{.Names}}'`, {

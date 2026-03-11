@@ -1,11 +1,11 @@
 ---
 name: add-voice-transcription
-description: Add voice message transcription to NanoClaw using OpenAI's Whisper API. Automatically transcribes WhatsApp voice notes so the agent can read and respond to them.
+description: Add voice message transcription to NanoDex using OpenAI's Whisper API. Automatically transcribes WhatsApp voice notes so the agent can read and respond to them.
 ---
 
 # Add Voice Transcription
 
-This skill adds automatic voice message transcription to NanoClaw's WhatsApp channel using OpenAI's Whisper API. When a voice note arrives, it is downloaded, transcribed, and delivered to the agent as `[Voice: <transcript>]`.
+This skill adds automatic voice message transcription to NanoDex's WhatsApp channel using OpenAI's Whisper API. When a voice note arrives, it is downloaded, transcribed, and delivered to the agent as `[Voice: <transcript>]`.
 
 ## Phase 1: Pre-flight
 
@@ -73,7 +73,7 @@ If the user doesn't have an API key:
 >
 > 1. Go to https://platform.openai.com/api-keys
 > 2. Click "Create new secret key"
-> 3. Give it a name (e.g., "NanoClaw Transcription")
+> 3. Give it a name (e.g., "NanoDex Transcription")
 > 4. Copy the key (starts with `sk-`)
 >
 > Cost: ~$0.006 per minute of audio (~$0.003 per typical 30-second voice note)
@@ -100,8 +100,8 @@ The container reads environment from `data/env/env`, not `.env` directly.
 
 ```bash
 npm run build
-launchctl kickstart -k gui/$(id -u)/com.nanoclaw  # macOS
-# Linux: systemctl --user restart nanoclaw
+launchctl kickstart -k gui/$(id -u)/com.nanodex  # macOS
+# Linux: systemctl --user restart nanodex
 ```
 
 ## Phase 4: Verify
@@ -115,7 +115,7 @@ Tell the user:
 ### Check logs if needed
 
 ```bash
-tail -f logs/nanoclaw.log | grep -i voice
+tail -f logs/nanodex.log | grep -i voice
 ```
 
 Look for:

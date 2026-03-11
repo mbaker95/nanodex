@@ -193,3 +193,4 @@ docker run -i --rm --entrypoint /bin/echo nanodex-agent:latest "Container OK"
 - NanoDex is a Codex-native fork of NanoClaw.
 - Host config paths still use `~/.config/nanoclaw` for compatibility with existing installs.
 - Legacy `CLAUDE.md` and `.claude` content may still exist in forks, but NanoDex prefers `AGENTS.md` and `.agents`.
+

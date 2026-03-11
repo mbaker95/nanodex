@@ -1,5 +1,5 @@
 /**
- * Cross-platform detection utilities for NanoClaw setup.
+ * Cross-platform detection utilities for NanoDex setup.
  */
 import { execSync } from 'child_process';
 import fs from 'fs';
@@ -130,3 +130,4 @@ export function getNodeMajorVersion(): number | null {
   const major = parseInt(version.split('.')[0], 10);
   return isNaN(major) ? null : major;
 }
+

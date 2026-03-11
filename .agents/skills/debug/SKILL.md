@@ -27,6 +27,6 @@ Focus on the Docker-backed Codex runtime.
 
 - Missing OpenAI/Codex API key.
 - Docker not running.
-- Old `nanoclaw-agent` image still being referenced in `.env` or local overrides.
+- Old `nanoclaw-agent` image still being referenced in `.env` or local overrides instead of `nanodex-agent`.
 - Session path mismatch preventing Codex thread reuse.
 - MCP tool failures from `container/agent-runner/src/ipc-mcp-stdio.ts`.

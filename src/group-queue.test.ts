@@ -15,7 +15,9 @@ vi.mock('fs', async () => {
     ...actual,
     default: {
       ...actual,
+      existsSync: vi.fn(() => false),
       mkdirSync: vi.fn(),
+      unlinkSync: vi.fn(),
       writeFileSync: vi.fn(),
       renameSync: vi.fn(),
     },
@@ -388,7 +390,8 @@ describe('GroupQueue', () => {
     queue.notifyIdle('group1@g.us');
 
     // A new user message arrives — resets idleWaiting
-    queue.sendMessage('group1@g.us', 'hello');
+    const sent = queue.sendMessage('group1@g.us', 'hello');
+    expect(sent).toBeTruthy();
 
     // Task enqueued after message reset — should NOT preempt (agent is working)
     const writeFileSync = vi.mocked(fs.default.writeFileSync);
@@ -406,7 +409,7 @@ describe('GroupQueue', () => {
     await vi.advanceTimersByTimeAsync(10);
   });
 
-  it('sendMessage returns false for task containers so user messages queue up', async () => {
+  it('sendMessage returns null for task containers so user messages queue up', async () => {
     let resolveTask: () => void;
 
     const taskFn = vi.fn(async () => {
@@ -427,7 +430,7 @@ describe('GroupQueue', () => {
 
     // sendMessage should return false — user messages must not go to task containers
     const result = queue.sendMessage('group1@g.us', 'hello');
-    expect(result).toBe(false);
+    expect(result).toBeNull();
 
     resolveTask!();
     await vi.advanceTimersByTimeAsync(10);
@@ -477,6 +480,85 @@ describe('GroupQueue', () => {
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
     expect(closeWrites).toHaveLength(1);
+
+    resolveProcess!();
+    await vi.advanceTimersByTimeAsync(10);
+  });
+
+  it('waitForMessageAck resolves true when the runner acknowledges a piped message', async () => {
+    const fs = await import('fs');
+    let resolveProcess: () => void;
+
+    const processMessages = vi.fn(async () => {
+      await new Promise<void>((resolve) => {
+        resolveProcess = resolve;
+      });
+      return true;
+    });
+
+    queue.setProcessMessagesFn(processMessages);
+    queue.enqueueMessageCheck('group1@g.us');
+    await vi.advanceTimersByTimeAsync(10);
+    queue.registerProcess(
+      'group1@g.us',
+      {} as any,
+      'container-1',
+      'test-group',
+    );
+
+    const sent = queue.sendMessage('group1@g.us', 'hello');
+    expect(sent).toBeTruthy();
+
+    const existsSync = vi.mocked(fs.default.existsSync);
+    existsSync.mockImplementation(
+      (targetPath) =>
+        typeof targetPath === 'string' &&
+        targetPath.endsWith(`${sent!.messageId}.ack`),
+    );
+
+    await expect(
+      queue.waitForMessageAck('group1@g.us', sent!.messageId, 500),
+    ).resolves.toBe(true);
+
+    expect(vi.mocked(fs.default.unlinkSync)).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`${sent!.messageId}\\.ack$`)),
+    );
+
+    resolveProcess!();
+    await vi.advanceTimersByTimeAsync(10);
+  });
+
+  it('waitForMessageAck resolves false when the runner never acknowledges a piped message', async () => {
+    let resolveProcess: () => void;
+
+    const processMessages = vi.fn(async () => {
+      await new Promise<void>((resolve) => {
+        resolveProcess = resolve;
+      });
+      return true;
+    });
+
+    queue.setProcessMessagesFn(processMessages);
+    queue.enqueueMessageCheck('group1@g.us');
+    await vi.advanceTimersByTimeAsync(10);
+    queue.registerProcess(
+      'group1@g.us',
+      {} as any,
+      'container-1',
+      'test-group',
+    );
+
+    const sent = queue.sendMessage('group1@g.us', 'hello');
+    expect(sent).toBeTruthy();
+
+    const waitPromise = queue.waitForMessageAck(
+      'group1@g.us',
+      sent!.messageId,
+      500,
+    );
+    await vi.advanceTimersByTimeAsync(600);
+
+    await expect(waitPromise).resolves.toBe(false);
 
     resolveProcess!();
     await vi.advanceTimersByTimeAsync(10);

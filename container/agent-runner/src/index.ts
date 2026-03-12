@@ -23,6 +23,7 @@ interface ContainerOutput {
 const CONTEXT_ROOT = '/workspace/context';
 const GROUP_WORKSPACE = path.join(CONTEXT_ROOT, 'group');
 const IPC_INPUT_DIR = '/workspace/ipc/input';
+const IPC_INPUT_ACK_DIR = '/workspace/ipc/input-acks';
 const IPC_INPUT_CLOSE_SENTINEL = path.join(IPC_INPUT_DIR, '_close');
 const IPC_POLL_MS = 500;
 const OUTPUT_START_MARKER = '---NANODEX_OUTPUT_START---';
@@ -50,6 +51,51 @@ function log(message: string): void {
   console.error(`[agent-runner] ${message}`);
 }
 
+function getStringField(
+  value: unknown,
+  keys: string[],
+): string | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of keys) {
+    const field = record[key];
+    if (typeof field === 'string' && field.trim()) {
+      return field.trim();
+    }
+  }
+
+  return null;
+}
+
+function getItemType(item: unknown): string | null {
+  return getStringField(item, ['type']);
+}
+
+function getAgentMessageText(item: unknown): string | null {
+  return getStringField(item, ['text']);
+}
+
+function getItemErrorMessage(item: unknown): string | null {
+  return getStringField(item, ['message', 'text']);
+}
+
+function describeTool(item: unknown): string | null {
+  return getStringField(item, [
+    'tool_name',
+    'toolName',
+    'name',
+    'title',
+    'command',
+  ]);
+}
+
+function isToolItemType(itemType: string | null): boolean {
+  return !!itemType && (itemType.includes('tool') || itemType.includes('mcp'));
+}
+
 function shouldClose(): boolean {
   if (fs.existsSync(IPC_INPUT_CLOSE_SENTINEL)) {
     try {
@@ -60,6 +106,17 @@ function shouldClose(): boolean {
     return true;
   }
   return false;
+}
+
+function acknowledgeIpcMessage(messageId: string): void {
+  try {
+    fs.mkdirSync(IPC_INPUT_ACK_DIR, { recursive: true });
+    fs.writeFileSync(path.join(IPC_INPUT_ACK_DIR, `${messageId}.ack`), '');
+  } catch (err) {
+    log(
+      `Failed to acknowledge IPC message ${messageId}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 function drainIpcInput(): string[] {
@@ -77,6 +134,9 @@ function drainIpcInput(): string[] {
         const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
         fs.unlinkSync(filePath);
         if (data.type === 'message' && data.text) {
+          if (typeof data.messageId === 'string' && data.messageId.trim()) {
+            acknowledgeIpcMessage(data.messageId.trim());
+          }
           messages.push(data.text);
         }
       } catch (err) {
@@ -187,6 +247,8 @@ async function runTurn(
 ): Promise<{ closedDuringTurn: boolean }> {
   const abortController = new AbortController();
   let closedDuringTurn = false;
+  let loggedReasoning = false;
+  let loggedReplyDraft = false;
 
   const pollHandle = setInterval(() => {
     if (shouldClose()) {
@@ -203,15 +265,35 @@ async function runTurn(
     for await (const event of events) {
       if (event.type === 'thread.started') {
         log(`Thread initialized: ${event.thread_id}`);
+      } else if (event.type === 'item.started') {
+        const itemType = getItemType(event.item);
+        if (itemType === 'reasoning' && !loggedReasoning) {
+          loggedReasoning = true;
+          log('Agent analyzing request');
+        } else if (itemType === 'agent_message' && !loggedReplyDraft) {
+          loggedReplyDraft = true;
+          log('Assistant drafting reply');
+        } else if (isToolItemType(itemType)) {
+          const toolName = describeTool(event.item);
+          log(toolName ? `Running tool: ${toolName}` : 'Running tool');
+        }
       } else if (event.type === 'item.completed') {
-        if (event.item.type === 'agent_message' && event.item.text.trim()) {
+        const itemType = getItemType(event.item);
+        const agentMessageText = getAgentMessageText(event.item);
+        if (itemType === 'agent_message' && agentMessageText) {
           writeOutput({
             status: 'success',
-            result: event.item.text,
+            result: agentMessageText,
             newSessionId: thread.id || undefined,
           });
-        } else if (event.item.type === 'error') {
-          log(`Codex item error: ${event.item.message}`);
+        } else if (itemType === 'error') {
+          const errorMessage = getItemErrorMessage(event.item);
+          log(
+            `Codex item error: ${errorMessage || 'Unknown item error'}`,
+          );
+        } else if (isToolItemType(itemType)) {
+          const toolName = describeTool(event.item);
+          log(toolName ? `Tool finished: ${toolName}` : 'Tool finished');
         }
       } else if (event.type === 'turn.failed') {
         throw new Error(event.error.message);

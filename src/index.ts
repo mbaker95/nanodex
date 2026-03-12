@@ -71,6 +71,7 @@ let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
 let lastAgentTimestamp: Record<string, string> = {};
 let messageLoopRunning = false;
+const ACTIVE_CONTAINER_ACK_TIMEOUT_MS = 5000;
 
 const channels: Channel[] = [];
 const queue = new GroupQueue();
@@ -179,7 +180,13 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         TRIGGER_PATTERN.test(m.content.trim()) &&
         (m.is_from_me || isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
     );
-    if (!hasTrigger) return true;
+    if (!hasTrigger) {
+      logger.info(
+        { group: group.name, messageCount: missedMessages.length },
+        'Messages received but waiting for trigger before processing',
+      );
+      return true;
+    }
   }
 
   const prompt = formatMessages(missedMessages, TIMEZONE);
@@ -233,10 +240,15 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
     if (result.status === 'success' && result.result === null) {
       if (pendingReply) {
+        logger.info(
+          { group: group.name, length: pendingReply.length },
+          'Sending agent reply to channel',
+        );
         await channel.sendMessage(chatJid, pendingReply);
         outputSentToUser = true;
         pendingReply = '';
       }
+      logger.info({ group: group.name }, 'Agent turn finished');
       queue.notifyIdle(chatJid);
     }
 
@@ -247,6 +259,16 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
   await channel.setTyping?.(chatJid, false);
   if (idleTimer) clearTimeout(idleTimer);
+
+  if (pendingReply && !outputSentToUser) {
+    logger.info(
+      { group: group.name, length: pendingReply.length },
+      'Sending pending agent reply after container exit',
+    );
+    await channel.sendMessage(chatJid, pendingReply);
+    outputSentToUser = true;
+    pendingReply = '';
+  }
 
   if (output === 'error' || hadError) {
     // If we already sent output to the user, don't roll back the cursor —
@@ -279,6 +301,17 @@ async function runAgent(
 ): Promise<'success' | 'error'> {
   const isMain = group.isMain === true;
   const sessionId = sessions[group.folder];
+
+  logger.info(
+    {
+      group: group.name,
+      folder: group.folder,
+      chatJid,
+      sessionId: sessionId || 'new',
+      promptLength: prompt.length,
+    },
+    'Dispatching prompt to agent',
+  );
 
   // Update tasks snapshot for container to read (filtered by group)
   const tasks = getAllTasks();
@@ -412,7 +445,17 @@ async function startMessageLoop(): Promise<void> {
                 (m.is_from_me ||
                   isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
             );
-            if (!hasTrigger) continue;
+            if (!hasTrigger) {
+              logger.info(
+                {
+                  group: group.name,
+                  chatJid,
+                  messageCount: groupMessages.length,
+                },
+                'Received messages but waiting for trigger before processing',
+              );
+              continue;
+            }
           }
 
           // Pull all messages since lastAgentTimestamp so non-trigger
@@ -426,22 +469,50 @@ async function startMessageLoop(): Promise<void> {
             allPending.length > 0 ? allPending : groupMessages;
           const formatted = formatMessages(messagesToSend, TIMEZONE);
 
-          if (queue.sendMessage(chatJid, formatted)) {
-            logger.debug(
-              { chatJid, count: messagesToSend.length },
-              'Piped messages to active container',
+          const sentMessage = queue.sendMessage(chatJid, formatted);
+          if (sentMessage) {
+            const acknowledged = await queue.waitForMessageAck(
+              chatJid,
+              sentMessage.messageId,
+              ACTIVE_CONTAINER_ACK_TIMEOUT_MS,
             );
-            lastAgentTimestamp[chatJid] =
-              messagesToSend[messagesToSend.length - 1].timestamp;
-            saveState();
-            // Show typing indicator while the container processes the piped message
-            channel
-              .setTyping?.(chatJid, true)
-              ?.catch((err) =>
-                logger.warn({ chatJid, err }, 'Failed to set typing indicator'),
+
+            if (acknowledged) {
+              logger.info(
+                { chatJid, count: messagesToSend.length },
+                'Piped messages to active agent container',
               );
+              lastAgentTimestamp[chatJid] =
+                messagesToSend[messagesToSend.length - 1].timestamp;
+              saveState();
+              // Show typing indicator while the container processes the piped message
+              channel
+                .setTyping?.(chatJid, true)
+                ?.catch((err) =>
+                  logger.warn({ chatJid, err }, 'Failed to set typing indicator'),
+                );
+            } else {
+              logger.warn(
+                {
+                  group: group.name,
+                  chatJid,
+                  messageId: sentMessage.messageId,
+                },
+                'Active agent did not acknowledge piped message, closing container for retry',
+              );
+              queue.closeStdin(chatJid);
+              queue.enqueueMessageCheck(chatJid);
+            }
           } else {
             // No active container — enqueue for a new one
+            logger.info(
+              {
+                group: group.name,
+                chatJid,
+                pendingCount: messagesToSend.length,
+              },
+              'Queued messages for agent processing',
+            );
             queue.enqueueMessageCheck(chatJid);
           }
         }

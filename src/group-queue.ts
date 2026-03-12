@@ -27,6 +27,12 @@ interface GroupState {
   retryCount: number;
 }
 
+interface SentMessageHandle {
+  messageId: string;
+}
+
+const IPC_ACK_POLL_MS = 100;
+
 export class GroupQueue {
   private groups = new Map<string, GroupState>();
   private activeCount = 0;
@@ -66,7 +72,7 @@ export class GroupQueue {
 
     if (state.active) {
       state.pendingMessages = true;
-      logger.debug({ groupJid }, 'Container active, message queued');
+      logger.info({ groupJid }, 'Agent already running, queued follow-up message');
       return;
     }
 
@@ -75,9 +81,9 @@ export class GroupQueue {
       if (!this.waitingGroups.includes(groupJid)) {
         this.waitingGroups.push(groupJid);
       }
-      logger.debug(
+      logger.info(
         { groupJid, activeCount: this.activeCount },
-        'At concurrency limit, message queued',
+        'At concurrency limit, queued message for later processing',
       );
       return;
     }
@@ -157,24 +163,59 @@ export class GroupQueue {
    * Send a follow-up message to the active container via IPC file.
    * Returns true if the message was written, false if no active container.
    */
-  sendMessage(groupJid: string, text: string): boolean {
+  sendMessage(groupJid: string, text: string): SentMessageHandle | null {
     const state = this.getGroup(groupJid);
     if (!state.active || !state.groupFolder || state.isTaskContainer)
-      return false;
+      return null;
     state.idleWaiting = false; // Agent is about to receive work, no longer idle
 
     const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
     try {
       fs.mkdirSync(inputDir, { recursive: true });
+      const messageId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
       const filepath = path.join(inputDir, filename);
       const tempPath = `${filepath}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
+      fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text, messageId }));
       fs.renameSync(tempPath, filepath);
-      return true;
+      logger.info({ groupJid, messageId }, 'Sent message to active agent container');
+      return { messageId };
     } catch {
-      return false;
+      return null;
     }
+  }
+
+  async waitForMessageAck(
+    groupJid: string,
+    messageId: string,
+    timeoutMs: number,
+  ): Promise<boolean> {
+    const state = this.getGroup(groupJid);
+    if (!state.groupFolder) return false;
+
+    const ackPath = path.join(
+      DATA_DIR,
+      'ipc',
+      state.groupFolder,
+      'input-acks',
+      `${messageId}.ack`,
+    );
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      if (fs.existsSync(ackPath)) {
+        try {
+          fs.unlinkSync(ackPath);
+        } catch {
+          /* ignore */
+        }
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, IPC_ACK_POLL_MS));
+    }
+
+    return false;
   }
 
   /**
@@ -204,9 +245,9 @@ export class GroupQueue {
     state.pendingMessages = false;
     this.activeCount++;
 
-    logger.debug(
+    logger.info(
       { groupJid, reason, activeCount: this.activeCount },
-      'Starting container for group',
+      'Starting agent processing for group',
     );
 
     try {

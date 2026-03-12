@@ -7,7 +7,7 @@
 <p align="center">
 A self-hosted Codex assistant with isolated Docker runtimes, per-group memory, and a codebase small enough to reshape safely in your own fork. 
   
-Ported to codex with 100% Vibes use at your own risk.
+Ported to codex with 100% Vibe. Use at your own risk.
 </p>
 
 ## Overview

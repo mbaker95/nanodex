@@ -10,7 +10,7 @@
 
 ## 概览
 
-NanoDex 是 NanoClaw 在 Codex 生态中的延续版本。它的目标不是把项目重做成另一个平台，而是在切换到底层代理之后，尽可能保留 NanoClaw 原本的理念和使用体验。
+NanoDex 是一个可自托管的 Codex 助手运行时。它的目标不是把项目重做成另一个平台，而是保持系统足够小、足够清晰，并且便于你在自己的 Fork 中直接改造。
 
 每个群组都有自己的工作区、会话状态、指令文件和工具。共享行为放在 `AGENTS.md` 与 `.agents/skills` 中，宿主编排器保持尽量精简，只负责路由、持久化、调度和容器生命周期。
 
@@ -48,9 +48,9 @@ npm start
 
 **Agent 是界面。** 安装、调试、定制都应该通过 Codex 在仓库中完成，而不是依赖图形面板或 shell 向导。
 
-**忠于 NanoClaw。** NanoDex 要尽量保持 NanoClaw 的理念和体验，只是在 Codex 的原生工作流中表达出来。
+**产品一致性。** NanoDex 应该在安装、调试和日常使用中保持小而直接的自托管形态。
 
-**WhatsApp 优先。** 最符合 NanoClaw 原意的默认路径，是一个可通过 WhatsApp 使用的个人助手。其他通道存在，但它们是次级选项，而不是同等地位的产品核心。
+**WhatsApp 优先。** 默认路径是一个可通过 WhatsApp 使用的个人助手。其他通道存在，但它们是次级选项，而不是同等地位的产品核心。
 
 ## 运行要求
 
@@ -60,9 +60,9 @@ npm start
 
 ## 默认通道
 
-最符合 NanoClaw 原始形态的默认路径是 WhatsApp。
+NanoDex 的默认路径是 WhatsApp。
 
-如果你希望得到最贴近 NanoClaw 的体验，建议先从 WhatsApp 开始设置。
+如果你希望走标准安装路径，建议先从 WhatsApp 开始设置。
 
 ## 可选内置通道
 
@@ -188,7 +188,7 @@ NanoDex 会在可用时启用 Codex 协作能力，包括：
 - `resume_agent`
 - `close_agent`
 
-这是对旧 NanoClaw swarm 模型的实用型 Codex 替代方案，但它并不是 Claude 旧 Teams 能力的完全等价移植。
+这是 NanoDex 当前的实用型 Codex 多智能体路径，但它并不是 Claude 旧 Teams 能力的完全等价移植。
 
 ## 项目结构
 
@@ -218,6 +218,6 @@ docker run -i --rm --entrypoint /bin/echo nanodex-agent:latest "Container OK"
 
 ## 说明
 
-- NanoDex 是 NanoClaw 在 Codex 生态中的延续版本。
+- NanoDex 是本仓库中统一使用的产品与运行时名称。
 - 为兼容已有安装，宿主配置路径仍使用 `~/.config/nanoclaw`。
 - 一些 Fork 中可能仍保留 `CLAUDE.md` 或 `.claude` 内容，但 NanoDex 以 `AGENTS.md` 和 `.agents` 为优先。

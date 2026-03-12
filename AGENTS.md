@@ -11,7 +11,7 @@ Single Node.js orchestrator with a Docker-backed Codex runtime. Channels self-re
 
 - Keep the core small enough that one person can understand the whole thing.
 - Prefer real isolation over application-layer permission theater.
-- Stay as faithful as possible to NanoClaw's philosophy and user experience while adapting it to Codex-native workflows.
+- Keep NanoDex coherent as a small, direct, self-hosted Codex assistant runtime.
 - Treat WhatsApp as the canonical default product path; other bundled channels are secondary.
 - Treat this repo as a personal fork to reshape, not a generic framework to configure.
 - Prefer code changes over configuration sprawl.

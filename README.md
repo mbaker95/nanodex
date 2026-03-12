@@ -12,7 +12,7 @@ Created with 100% Vibes use at your own risk.
 
 ## Overview
 
-NanoDex is a Codex-native fork of NanoClaw. It is built for people who want a personal assistant they can run themselves, understand end to end, and reshape in their own fork without turning everything into one shared chat thread.
+NanoDex is a self-hosted Codex assistant runtime built for people who want something they can run themselves, understand end to end, and reshape in their own fork without turning everything into one shared chat thread.
 
 Each group runs with its own workspace, session state, instructions, and tools. Shared behavior lives in `AGENTS.md` and `.agents/skills`, while the host orchestrator stays small: routing, persistence, scheduling, and container lifecycle.
 
@@ -52,9 +52,9 @@ That is the standard way to start NanoDex. On first launch, NanoDex prepares the
 
 **Skills over feature sprawl.** Core communication channels can be bundled when they are central to the product experience. Beyond that, new capabilities should still land as skills that transform a fork instead of bloating core.
 
-**Faithful to NanoClaw.** NanoDex should stay as close as possible to NanoClaw's philosophy and user experience while adapting that experience to Codex-native tools and workflows.
+**Product continuity.** NanoDex should keep a small, direct, self-hosted operating model across setup, debugging, and day-to-day use.
 
-**WhatsApp-first.** The canonical NanoClaw path is a personal assistant reachable through WhatsApp. Other bundled channels exist, but they are secondary to that default shape.
+**WhatsApp-first.** The default path is a personal assistant reachable through WhatsApp. Other bundled channels exist, but they are secondary to that default shape.
 
 ## Requirements
 
@@ -64,7 +64,7 @@ That is the standard way to start NanoDex. On first launch, NanoDex prepares the
 
 ## Default Channel
 
-The default NanoDex path is WhatsApp. If you want the most faithful NanoClaw-style setup, start there.
+The default NanoDex path is WhatsApp. If you want the standard setup flow, start there.
 
 ## Optional Bundled Channels
 
@@ -190,7 +190,7 @@ NanoDex enables Codex collaboration features where available, including:
 - `resume_agent`
 - `close_agent`
 
-This is a practical Codex-native replacement for the old NanoClaw swarm model, though it is not a one-to-one port of Claude's previous teams surface.
+This is the practical Codex-native multi-agent path for NanoDex, though it is not a one-to-one port of Claude's previous teams surface.
 
 ## Project Structure
 
@@ -220,6 +220,6 @@ docker run -i --rm --entrypoint /bin/echo nanodex-agent:latest "Container OK"
 
 ## Notes
 
-- NanoDex is a Codex-native fork of NanoClaw.
+- NanoDex is the product and runtime name used throughout this repo.
 - Host config paths still use `~/.config/nanoclaw` for compatibility with existing installs.
 - Legacy `CLAUDE.md` and `.claude` content may still exist in forks, but NanoDex prefers `AGENTS.md` and `.agents`.

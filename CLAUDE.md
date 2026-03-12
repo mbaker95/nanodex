@@ -1,65 +1,46 @@
 # NanoDex
 
-Personal Codex assistant. See [README.md](README.md) for philosophy and setup. See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for architecture decisions.
+Legacy compatibility note for older assistants that still look for `CLAUDE.md`.
+
+Use [AGENTS.md](AGENTS.md) as the canonical repo instructions and [README.md](README.md) for public setup and usage. The live runtime is Codex-native, and repo-local skills live under `.agents/skills`.
 
 ## Quick Context
 
-Single Node.js process with skill-based channel system. Channels (WhatsApp, Telegram, Slack, Discord, Gmail) are skills that self-register at startup. Messages route to Claude Agent SDK running in containers (Linux VMs). Each group has isolated filesystem and memory.
+Single Node.js orchestrator with a Docker-backed Codex runtime. Channels self-register at startup. Each group gets its own container session, isolated workspace, IPC namespace, and Codex thread state.
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `src/index.ts` | Orchestrator: state, message loop, agent invocation |
-| `src/channels/registry.ts` | Channel registry (self-registration at startup) |
-| `src/ipc.ts` | IPC watcher and task processing |
-| `src/router.ts` | Message formatting and outbound routing |
-| `src/config.ts` | Trigger pattern, paths, intervals |
-| `src/container-runner.ts` | Spawns agent containers with mounts |
-| `src/task-scheduler.ts` | Runs scheduled tasks |
-| `src/db.ts` | SQLite operations |
-| `groups/{name}/CLAUDE.md` | Per-group memory (isolated) |
-| `container/skills/agent-browser.md` | Browser automation tool (available to all agents via Bash) |
+| `src/index.ts` | Host orchestrator: polling, routing, scheduler, agent invocation |
+| `src/container-runner.ts` | Docker mounts, auth/env injection, container lifecycle |
+| `container/agent-runner/src/index.ts` | Container-side Codex thread loop |
+| `container/agent-runner/src/ipc-mcp-stdio.ts` | Built-in MCP tools for messaging, tasks, and group control |
+| `src/ipc.ts` | Host-side IPC watcher and task mutation |
+| `src/db.ts` | SQLite persistence for messages, groups, sessions, and tasks |
+| `groups/*/AGENTS.md` | Per-group memory and behavior instructions |
+| `.agents/skills/*` | Repo-local Codex skills |
 
 ## Skills
 
-| Skill | When to Use |
-|-------|-------------|
-| `/setup` | First-time installation, authentication, service configuration |
-| `/customize` | Adding channels, integrations, changing behavior |
-| `/debug` | Container issues, logs, troubleshooting |
-| `/update-nanoclaw` | Bring upstream NanoDex updates into a customized install |
-| `/qodo-pr-resolver` | Fetch and fix Qodo PR review issues interactively or in batch |
-| `/get-qodo-rules` | Load org- and repo-level coding rules from Qodo before code tasks |
+| Skill | Purpose |
+|-------|---------|
+| `$setup` | First-time install and runtime setup |
+| `$customize` | Add channels, integrations, or behavior changes |
+| `$debug` | Diagnose Docker, auth, IPC, or session issues |
+| `$update-nanodex` | Pull upstream fork updates into a customized install |
+| `$update-skills` | Refresh repo skill content and skill remotes |
 
 ## Development
 
-Run commands directly—don't tell the user to run them.
-
 ```bash
-npm run dev          # Run with hot reload
-npm run build        # Compile TypeScript
-./container/build.sh # Rebuild agent container
+npm run dev
+npm run build
+npm run typecheck
+./container/build.sh
 ```
 
-Service management:
-```bash
-# macOS (launchd)
-launchctl load ~/Library/LaunchAgents/com.nanodex.plist
-launchctl unload ~/Library/LaunchAgents/com.nanodex.plist
-launchctl kickstart -k gui/$(id -u)/com.nanodex  # restart
+## Notes
 
-# Linux (systemd)
-systemctl --user start nanodex
-systemctl --user stop nanodex
-systemctl --user restart nanodex
-```
-
-## Troubleshooting
-
-**WhatsApp not connecting after upgrade:** WhatsApp is now a separate channel fork, not bundled in core. Run `/add-whatsapp` (or `git remote add whatsapp https://github.com/qwibitai/nanoclaw-whatsapp.git && git fetch whatsapp main && git merge whatsapp/main && npm run build`) to install it. Existing auth credentials and groups are preserved.
-
-## Container Build Cache
-
-The container buildkit caches the build context aggressively. `--no-cache` alone does NOT invalidate COPY steps — the builder's volume retains stale files. To force a truly clean rebuild, prune the builder then re-run `./container/build.sh`.
-
+- The runtime is Codex-native, but host config paths still use `~/.config/nanoclaw` for compatibility with existing installs.
+- Legacy `.claude` content may still exist in forks, but the runtime prefers `AGENTS.md` and `.agents`.
